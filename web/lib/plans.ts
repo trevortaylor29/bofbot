@@ -55,7 +55,7 @@ export function planDefinition(plan: UserPlan): PlanDefinition {
   return planById.get(plan) ?? PLANS[0]!;
 }
 
-/** Text to send to the worker for drawtext; null = skip watermark */
+/** Text to send to the worker; burned into overlay PNG (Pillow); null = skip */
 export function watermarkTextForPlan(plan: UserPlan): string | null {
   return planDefinition(plan).watermark;
 }

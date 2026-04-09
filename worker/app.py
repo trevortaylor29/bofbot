@@ -25,7 +25,6 @@ import logging
 import os
 import random
 import shutil
-import subprocess
 import tempfile
 from pathlib import Path
 from typing import Any, Literal
@@ -101,7 +100,7 @@ class ProcessRequest(BaseModel):
     color_presets: list[BannerColors] | None = None
     watermark_text: str | None = Field(
         None,
-        description="If set, burn this text bottom-right (free tier branding)",
+        description="If set, drawn on overlay PNG bottom-right before composite (free tier)",
     )
     priority_processing: bool = Field(
         False,
@@ -270,6 +269,7 @@ def _run_normalize_and_composite(
     ext_out: str,
     preset: dict[str, Any],
     t_ffmpeg: float,
+    watermark_text: str | None,
 ) -> Path:
     norm_path = tmp_dir / "normalized.mp4"
     tmp_out = tmp_dir / f"out{ext_out}"
@@ -288,79 +288,13 @@ def _run_normalize_and_composite(
             tmp_out,
             preset=preset,
             ffmpeg_timeout_sec=t_ffmpeg,
+            watermark_text=watermark_text,
         )
     except (RuntimeError, TimeoutError, FileNotFoundError, OSError) as e:
         log.exception("Composite failed")
         raise HTTPException(status_code=500, detail=str(e)) from e
 
     return tmp_out
-
-
-def _apply_brand_watermark(
-    src: Path, dest: Path, label: str, timeout_sec: float
-) -> None:
-    """Bottom-right semi-transparent text (free tier)."""
-    if shutil.which("ffmpeg") is None:
-        raise HTTPException(status_code=500, detail="ffmpeg not found on PATH")
-    safe = (
-        label.replace("\\", "\\\\")
-        .replace(":", r"\:")
-        .replace("'", r"\'")
-        .replace("%", r"\%")
-    )
-    vf = (
-        f"drawtext=text='{safe}':fontcolor=white@0.72:fontsize=22:"
-        "x=w-text_w-14:y=h-text_h-14:box=1:boxcolor=black@0.42:boxborderw=5"
-    )
-    cmd: list[str] = [
-        "ffmpeg",
-        "-y",
-        "-hide_banner",
-        "-loglevel",
-        "warning",
-        "-i",
-        str(src),
-        "-vf",
-        vf,
-        "-c:v",
-        "libx264",
-        "-preset",
-        "medium",
-        "-crf",
-        "18",
-    ]
-    if tiktoked._video_has_audio(src):
-        cmd.extend(["-c:a", "copy"])
-    else:
-        cmd.append("-an")
-    cmd.append(str(dest))
-    log.info("Watermark ffmpeg: %s", subprocess.list2cmdline(cmd))
-    try:
-        proc = subprocess.run(
-            cmd, capture_output=True, text=True, timeout=timeout_sec
-        )
-    except subprocess.TimeoutExpired as e:
-        raise HTTPException(status_code=500, detail="watermark ffmpeg timed out") from e
-    if proc.returncode != 0:
-        err = (proc.stderr or proc.stdout or "").strip()
-        raise HTTPException(
-            status_code=500, detail=f"watermark ffmpeg failed: {err}"
-        )
-
-
-def _maybe_watermark(
-    req: ProcessRequest,
-    tmp_path: Path,
-    composed: Path,
-    ext_out: str,
-    t_ffmpeg: float,
-) -> Path:
-    label = (req.watermark_text or "").strip()
-    if not label:
-        return composed
-    out_wm = tmp_path / f"wm_brand{ext_out}"
-    _apply_brand_watermark(composed, out_wm, label, t_ffmpeg)
-    return out_wm
 
 
 def process_video_r2(req: ProcessRequest) -> ProcessResponse:
@@ -382,13 +316,20 @@ def process_video_r2(req: ProcessRequest) -> ProcessResponse:
 
         _download_r2_object(client, bucket, key_in, raw_copy)
 
+        wm = (req.watermark_text or "").strip() or None
         tmp_out = _run_normalize_and_composite(
-            cfg, raw_copy, tmp_path, ext_in, ext_out, preset_dict, t_ffmpeg
+            cfg,
+            raw_copy,
+            tmp_path,
+            ext_in,
+            ext_out,
+            preset_dict,
+            t_ffmpeg,
+            wm,
         )
-        final_out = _maybe_watermark(req, tmp_path, tmp_out, ext_out, t_ffmpeg)
 
         ct = _content_type_for_suffix(ext_out)
-        _upload_r2_object(client, bucket, key_out, final_out, ct)
+        _upload_r2_object(client, bucket, key_out, tmp_out, ct)
 
     return ProcessResponse(
         processed_rel_path=req.processed_rel_path,
@@ -419,12 +360,19 @@ def process_video_local(req: ProcessRequest) -> ProcessResponse:
         raw_copy = tmp_path / f"in{ext_in}"
         shutil.copy2(raw_abs, raw_copy)
 
+        wm = (req.watermark_text or "").strip() or None
         tmp_out = _run_normalize_and_composite(
-            cfg, raw_copy, tmp_path, ext_in, ext_out, preset_dict, t_ffmpeg
+            cfg,
+            raw_copy,
+            tmp_path,
+            ext_in,
+            ext_out,
+            preset_dict,
+            t_ffmpeg,
+            wm,
         )
-        final_out = _maybe_watermark(req, tmp_path, tmp_out, ext_out, t_ffmpeg)
 
-        shutil.copy2(final_out, out_abs)
+        shutil.copy2(tmp_out, out_abs)
 
     return ProcessResponse(
         processed_rel_path=req.processed_rel_path,

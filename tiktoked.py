@@ -796,6 +796,41 @@ def render_preset_overlay(
     return render_banner_overlay(cfg, preset, jitter_y, font_main)
 
 
+def draw_brand_watermark_on_overlay(
+    img: Image.Image,
+    text: str,
+    font_main: Path,
+    *,
+    font_size_px: int = 18,
+    margin_px: int = 14,
+    stroke_width: int = 2,
+) -> None:
+    """Small white label with black stroke, bottom-right (free tier); mutates RGBA overlay."""
+    label = (text or "").strip()
+    if not label:
+        return
+    if img.mode != "RGBA":
+        raise ValueError("overlay image must be RGBA")
+    try:
+        font = load_main_font(font_main, font_size_px)
+    except OSError:
+        font = ImageFont.load_default()
+        log.warning("Watermark font load failed; using default: %s", font_main)
+    draw = ImageDraw.Draw(img)
+    bbox = draw.textbbox((0, 0), label, font=font)
+    tw, th = bbox[2] - bbox[0], bbox[3] - bbox[1]
+    x = max(margin_px, img.width - tw - margin_px)
+    y = max(margin_px, img.height - th - margin_px)
+    draw.text(
+        (x, y),
+        label,
+        font=font,
+        fill=(255, 255, 255, 255),
+        stroke_width=stroke_width,
+        stroke_fill=(0, 0, 0, 255),
+    )
+
+
 def enrich_config(cfg: dict[str, Any]) -> dict[str, Any]:
     out = dict(cfg)
     main_p, _ = resolve_font(cfg, "font_path")
@@ -1006,11 +1041,19 @@ def composite_one(
     preset: dict[str, Any] | None = None,
     *,
     ffmpeg_timeout_sec: float | None = None,
+    watermark_text: str | None = None,
 ) -> dict[str, Any]:
     cfg = enrich_config(cfg)
     chosen = preset or random.choice(cfg["presets"])
     jitter = random.randint(-18, 18)
     overlay_img = render_preset_overlay(cfg, chosen, jitter)
+    wt = (watermark_text or "").strip()
+    if wt:
+        fp = cfg.get("_main_font_path")
+        if fp and Path(str(fp)).is_file():
+            draw_brand_watermark_on_overlay(
+                overlay_img, wt, Path(str(fp))
+            )
 
     video_out = Path(video_out).expanduser()
     video_out.parent.mkdir(parents=True, exist_ok=True)
