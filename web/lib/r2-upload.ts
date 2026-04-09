@@ -1,5 +1,7 @@
 import {
+  GetObjectCommand,
   HeadObjectCommand,
+  ListObjectsV2Command,
   PutObjectCommand,
   S3Client,
 } from "@aws-sdk/client-s3";
@@ -92,4 +94,85 @@ export async function presignRawVideoPut(
     ContentType: contentType,
   });
   return getSignedUrl(client, command, { expiresIn: PRESIGN_EXPIRES_SEC });
+}
+
+function contentTypeForVideoName(name: string): string {
+  if (name.toLowerCase().endsWith(".mov")) return "video/quicktime";
+  return "video/mp4";
+}
+
+/**
+ * Presigned GET URL so the browser can download an object directly from R2.
+ */
+export async function presignGetDownload(
+  objectKey: string,
+  downloadFileName: string
+): Promise<string> {
+  const key = normalizeR2ObjectKey(objectKey);
+  if (!key) {
+    throw new Error("invalid object key for presigned download");
+  }
+  const bucket = requiredEnv("R2_BUCKET");
+  const client = r2Client();
+  const safeName = downloadFileName.replace(/[\r\n"]/g, "_").slice(0, 200) || "video.mp4";
+  const command = new GetObjectCommand({
+    Bucket: bucket,
+    Key: key,
+    ResponseContentType: contentTypeForVideoName(safeName),
+    ResponseContentDisposition: `attachment; filename="${safeName.replace(/"/g, "_")}"`,
+  });
+  return getSignedUrl(client, command, { expiresIn: PRESIGN_EXPIRES_SEC });
+}
+
+/**
+ * Keys under out/{batchId}/ that look like processed videos (.mp4 / .mov), sorted.
+ */
+export async function listOutBatchVideoKeys(batchId: string): Promise<string[]> {
+  if (!isR2DirectUploadConfigured()) return [];
+  const bid = batchId.trim().replace(/\\/g, "/").replace(/^\/+/, "");
+  if (!bid || bid.includes("..")) return [];
+  const prefix = `out/${bid}/`;
+  const bucket = requiredEnv("R2_BUCKET");
+  const client = r2Client();
+  const keys: string[] = [];
+  let continuationToken: string | undefined;
+  do {
+    const out = await client.send(
+      new ListObjectsV2Command({
+        Bucket: bucket,
+        Prefix: prefix,
+        ContinuationToken: continuationToken,
+      })
+    );
+    for (const obj of out.Contents ?? []) {
+      const k = obj.Key;
+      if (!k) continue;
+      const base = k.split("/").pop() ?? "";
+      if (!/\.(mp4|mov)$/i.test(base)) continue;
+      if (base.includes("..") || base.includes("/") || base.includes("\\")) continue;
+      keys.push(k);
+    }
+    continuationToken = out.IsTruncated
+      ? out.NextContinuationToken
+      : undefined;
+  } while (continuationToken);
+  keys.sort();
+  return keys;
+}
+
+/**
+ * Open a readable stream for an R2 object (Node.js). Caller must consume or destroy the stream.
+ */
+export async function getR2ObjectBodyStream(
+  objectKey: string
+): Promise<import("node:stream").Readable | null> {
+  const key = normalizeR2ObjectKey(objectKey);
+  if (!key) return null;
+  const bucket = requiredEnv("R2_BUCKET");
+  const client = r2Client();
+  const obj = await client.send(
+    new GetObjectCommand({ Bucket: bucket, Key: key })
+  );
+  if (!obj.Body) return null;
+  return obj.Body as import("node:stream").Readable;
 }

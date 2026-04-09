@@ -39,7 +39,7 @@ export async function processVideosLocal(params: {
   videos: { videoId: string; rawRelPath: string }[];
   workerOptions?: WorkerProcessOptions;
   /** Fires after each video finishes (success or failure), for progress / ETA. */
-  onVideoDone?: (info: VideoProgressInfo) => void;
+  onVideoDone?: (info: VideoProgressInfo) => void | Promise<void>;
 }): Promise<{ results: LocalVideoResult[] }> {
   const { batchId, snapshot, videos, workerOptions, onVideoDone } = params;
   const results: LocalVideoResult[] = [];
@@ -96,7 +96,9 @@ export async function processVideosLocal(params: {
 
     const durationMs = Date.now() - t0;
     results.push(result);
-    onVideoDone?.({ index: i, total, result, durationMs });
+    await Promise.resolve(
+      onVideoDone?.({ index: i, total, result, durationMs })
+    );
   }
 
   return { results };

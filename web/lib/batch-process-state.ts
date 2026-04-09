@@ -1,5 +1,10 @@
 import type { HooksSnapshot } from "@/drizzle/schema";
 import { processVideosLocal } from "@/lib/process-local-videos";
+import {
+  isR2DirectUploadConfigured,
+  normalizeR2ObjectKey,
+  presignGetDownload,
+} from "@/lib/r2-upload";
 import type { WorkerProcessOptions } from "@/lib/worker";
 
 /**
@@ -130,7 +135,7 @@ async function runBatch(
       snapshot,
       videos,
       workerOptions,
-      onVideoDone: ({ result, durationMs }) => {
+      onVideoDone: async ({ result, durationMs }) => {
         const e = store.get(batchId);
         if (!e) return;
         e.finished += 1;
@@ -143,12 +148,31 @@ async function runBatch(
         }
         if (result.ok && result.processedRelPath) {
           const base = result.processedRelPath.split("/").pop() ?? "";
-          const encBatch = encodeURIComponent(batchId);
-          const encFile = encodeURIComponent(base);
-          e.downloads.push({
-            videoId: result.videoId,
-            url: `${origin}/api/download-local/${encBatch}/${encFile}`,
-          });
+          try {
+            let url: string;
+            if (isR2DirectUploadConfigured()) {
+              const key = normalizeR2ObjectKey(result.processedRelPath);
+              if (!key) {
+                throw new Error("invalid processed key for R2");
+              }
+              url = await presignGetDownload(key, base || "video.mp4");
+            } else {
+              const encBatch = encodeURIComponent(batchId);
+              const encFile = encodeURIComponent(base);
+              url = `${origin}/api/download-local/${encBatch}/${encFile}`;
+            }
+            e.downloads.push({
+              videoId: result.videoId,
+              url,
+            });
+          } catch (err) {
+            console.error("[bofbot] download URL failed", err);
+            e.succeeded -= 1;
+            e.failed += 1;
+            e.errors.push(
+              `${result.videoId}: could not create download link`
+            );
+          }
         }
       },
     });
