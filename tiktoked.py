@@ -849,6 +849,8 @@ def ffmpeg_normalize_video(
         "-hide_banner",
         "-loglevel",
         "warning",
+        # Skip streams FFmpeg cannot decode (e.g. iPhone spatial apac) without OOM-heavy probing.
+        "-ignore_unknown",
         "-i",
         str(video_in),
         # First video + first audio only: iPhone spatial (e.g. apac) lives on extra
