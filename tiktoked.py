@@ -827,6 +827,45 @@ def _video_has_audio(video_in: Path) -> bool:
     return bool((r.stdout or "").strip())
 
 
+def ffprobe_video_stream_dimensions(video_in: Path) -> tuple[int, int] | None:
+    """Pixel width × height of the first video stream, or None if ffprobe cannot read it."""
+    if shutil.which("ffprobe") is None:
+        return None
+    r = subprocess.run(
+        [
+            "ffprobe",
+            "-v",
+            "error",
+            "-select_streams",
+            "v:0",
+            "-show_entries",
+            "stream=width,height",
+            "-of",
+            "json",
+            str(video_in),
+        ],
+        capture_output=True,
+        text=True,
+    )
+    if r.returncode != 0:
+        return None
+    try:
+        data = json.loads(r.stdout or "{}")
+        streams = data.get("streams") or []
+        if not streams:
+            return None
+        w = streams[0].get("width")
+        h = streams[0].get("height")
+        if w is None or h is None:
+            return None
+        wi, hi = int(w), int(h)
+        if wi <= 0 or hi <= 0:
+            return None
+        return (wi, hi)
+    except (json.JSONDecodeError, TypeError, ValueError, KeyError, IndexError):
+        return None
+
+
 def ffmpeg_normalize_video(
     video_in: Path,
     video_out: Path,
@@ -838,6 +877,19 @@ def ffmpeg_normalize_video(
     """Scale video to fit inside width×height (preserve aspect), pad to exact frame size."""
     if shutil.which("ffmpeg") is None:
         raise FileNotFoundError("ffmpeg not found on PATH")
+    dims = ffprobe_video_stream_dimensions(video_in)
+    if dims is not None and dims[0] == width and dims[1] == height:
+        log.info(
+            "FFmpeg normalize skip (already %dx%d): copy %s → %s",
+            width,
+            height,
+            video_in,
+            video_out,
+        )
+        video_out = Path(video_out)
+        video_out.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy2(video_in, video_out)
+        return
     vf = (
         f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
         f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1"
@@ -920,7 +972,7 @@ def ffmpeg_composite(
         "[outv]",
     ]
     if _video_has_audio(video_in):
-        cmd.extend(["-map", "0:a", "-c:a", "copy"])
+        cmd.extend(["-map", "0:a:0", "-c:a", "copy"])
     cmd.extend(
         [
             "-c:v",
@@ -928,7 +980,7 @@ def ffmpeg_composite(
             "-crf",
             "18",
             "-preset",
-            "medium",
+            "ultrafast",
             str(video_out),
         ]
     )
