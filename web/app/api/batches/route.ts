@@ -8,7 +8,12 @@ import {
   type CreateBatchBody,
 } from "@/lib/batch-validation";
 import { isDbConnectionError } from "@/lib/db-errors";
+import { rawRelPath } from "@/lib/local-media";
 import { registerBatch } from "@/lib/pending-batches";
+import {
+  isR2DirectUploadConfigured,
+  presignRawVideoPut,
+} from "@/lib/r2-upload";
 
 /**
  * Dashboard list — loads DB only when this handler runs (not on POST / upload).
@@ -88,6 +93,45 @@ export async function POST(request: Request) {
   }
 
   registerBatch(batchId, videoIds);
+
+  if (isR2DirectUploadConfigured()) {
+    try {
+      const uploads = await Promise.all(
+        videoIds.map(async (videoId, i) => {
+          const f = files[i]!;
+          const lower = f.name.trim().toLowerCase();
+          const ext = lower.endsWith(".mov")
+            ? (".mov" as const)
+            : (".mp4" as const);
+          const contentType = contentTypeForFile(f.name, f.contentType)!;
+          const rel = rawRelPath(batchId, videoId, ext);
+          const uploadUrl = await presignRawVideoPut(rel, contentType);
+          return {
+            videoId,
+            contentType,
+            rawRelPath: rel,
+            uploadUrl,
+            uploadHeaders: { "Content-Type": contentType },
+          };
+        })
+      );
+
+      return NextResponse.json({
+        batchId,
+        uploads,
+        storage: "r2",
+      });
+    } catch (e) {
+      console.error(e);
+      return NextResponse.json(
+        {
+          error:
+            "Could not prepare direct upload. Check R2_BUCKET, R2_ENDPOINT, and R2 credentials on the server.",
+        },
+        { status: 500 }
+      );
+    }
+  }
 
   const uploads = videoIds.map((videoId, i) => {
     const f = files[i]!;
