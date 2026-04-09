@@ -44,7 +44,8 @@ import {
 type OverlayStyle = "banner" | "fulltext";
 type HookSource = "presets" | "custom";
 
-const ACCEPT = "video/mp4,video/quicktime,video/x-m4v,.mp4,.mov";
+const ACCEPT =
+  "video/mp4,video/quicktime,video/x-m4v,.mp4,.mov,.m4v";
 
 function isNetworkFetchFailure(e: unknown): boolean {
   // Browsers usually throw TypeError("Failed to fetch") when the connection is
@@ -165,16 +166,25 @@ export function UploadFlow() {
     etaSeconds: number | null;
   }>(null);
 
-  const addFiles = useCallback((list: FileList | File[]) => {
+  const addFiles = useCallback((list: FileList | File[]): number => {
+    const arr = Array.from(list);
     const next: File[] = [];
-    for (const f of list) {
+    for (const f of arr) {
       const n = f.name.toLowerCase();
-      if (n.endsWith(".mp4") || n.endsWith(".mov")) {
+      const byName =
+        n.endsWith(".mp4") || n.endsWith(".mov") || n.endsWith(".m4v");
+      const t = (f.type || "").toLowerCase();
+      const byType =
+        t === "video/mp4" ||
+        t === "video/quicktime" ||
+        t === "video/x-m4v";
+      if (byName || byType) {
         next.push(f);
       }
     }
-    if (next.length === 0) return;
+    if (next.length === 0) return 0;
     setFiles((prev) => [...prev, ...next]);
+    return next.length;
   }, []);
 
   const removeFile = (i: number) => {
@@ -477,7 +487,14 @@ export function UploadFlow() {
   }
 
   return (
-    <div className="flex flex-col gap-10 text-sm text-zinc-300">
+    <form
+      className="flex flex-col gap-10 text-sm text-zinc-300"
+      onSubmit={(e) => {
+        e.preventDefault();
+        void onProcess();
+      }}
+      noValidate
+    >
       {error ? (
         <p className="rounded border border-red-900/80 bg-red-950/40 px-3 py-2 text-red-200">
           {error}
@@ -743,7 +760,14 @@ export function UploadFlow() {
           onDrop={(e) => {
             e.preventDefault();
             setDrag(false);
-            addFiles(e.dataTransfer.files);
+            if (e.dataTransfer.files?.length) {
+              const added = addFiles(e.dataTransfer.files);
+              if (added === 0) {
+                setError(
+                  "Dropped files are not supported. Use .mp4, .mov, or .m4v."
+                );
+              }
+            }
           }}
           className={`rounded border border-dashed px-4 py-10 text-center ${
             drag ? "border-zinc-500 bg-zinc-900/50" : "border-zinc-700"
@@ -757,8 +781,17 @@ export function UploadFlow() {
             className="hidden"
             id="file-input"
             onChange={(e) => {
-              if (e.target.files?.length) addFiles(e.target.files);
-              e.target.value = "";
+              const input = e.target;
+              const list = input.files;
+              if (list?.length) {
+                const added = addFiles(list);
+                if (added === 0) {
+                  setError(
+                    "No supported videos in that selection. Use .mp4, .mov, or .m4v."
+                  );
+                }
+              }
+              input.value = "";
             }}
           />
           <label htmlFor="file-input" className="cursor-pointer text-zinc-400">
@@ -801,9 +834,8 @@ export function UploadFlow() {
       </section>
 
       <button
-        type="button"
+        type="submit"
         disabled={busy || files.length === 0}
-        onClick={() => void onProcess()}
         className="rounded-lg bg-white py-3 text-sm font-medium text-zinc-900 disabled:opacity-40"
       >
         {busy ? "Working…" : "Process videos"}
@@ -846,6 +878,6 @@ export function UploadFlow() {
           </ul>
         </section>
       ) : null}
-    </div>
+    </form>
   );
 }

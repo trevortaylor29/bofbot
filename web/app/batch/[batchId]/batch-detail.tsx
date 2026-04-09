@@ -69,12 +69,11 @@ export function BatchDetail({ batchId }: { batchId: string }) {
       <p className="mt-2 font-mono text-xs text-zinc-500">{data.id}</p>
       {queuedHint ? (
         <p className="mt-4 rounded border border-amber-900/80 bg-amber-950/40 px-3 py-2 text-sm text-amber-100/95">
-          This batch was enqueued to Redis. Keep{" "}
+          This batch is queued for background processing. Keep{" "}
           <code className="rounded bg-zinc-900 px-1 py-0.5 text-xs text-zinc-300">
             npm run worker:video
           </code>{" "}
-          running (with <code className="text-xs">REDIS_URL</code>) so videos
-          finish processing.
+          running so videos finish.
         </p>
       ) : null}
       {busy ? (
@@ -106,10 +105,15 @@ export function BatchDetail({ batchId }: { batchId: string }) {
             className="rounded border border-zinc-800 px-3 py-2 text-xs"
           >
             <div className="text-zinc-500">{v.status}</div>
-            <div className="truncate font-mono text-zinc-400">{v.rawS3Key}</div>
-            {v.processedS3Key ? (
-              <div className="mt-1 truncate font-mono text-zinc-500">
-                → {v.processedS3Key}
+            <div className="truncate font-mono text-zinc-400" title="Raw path">
+              {v.rawMediaPath}
+            </div>
+            {v.processedMediaPath ? (
+              <div
+                className="mt-1 truncate font-mono text-zinc-500"
+                title="Output path"
+              >
+                → {v.processedMediaPath}
               </div>
             ) : null}
           </li>

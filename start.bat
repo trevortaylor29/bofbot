@@ -45,7 +45,6 @@ exit /b 0
 cd /d "%~dp0"
 set "BOFBOT_MEDIA_ROOT=%~dp0web\.data\media"
 set "TIKTOKED_MEDIA_ROOT=%BOFBOT_MEDIA_ROOT%"
-set "WORKER_FFMPEG_TIMEOUT_SEC=120"
 set "REQ=%~dp0requirements-worker.txt"
 title BofBot Worker (uvicorn :8000)
 echo BOFBOT_MEDIA_ROOT=%BOFBOT_MEDIA_ROOT%

@@ -36,6 +36,13 @@
       "when": 1776000000001,
       "tag": "0004_guest_email_bofbot",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1776100000000,
+      "tag": "0005_video_media_path_columns",
+      "breakpoints": true
     }
   ]
 }

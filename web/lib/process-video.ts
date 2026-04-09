@@ -10,8 +10,8 @@ import {
 } from "@/lib/plans";
 import { buildLocalWorkerPayload, callProcessingWorker } from "@/lib/worker";
 
-function outputExtFromRawKey(rawKey: string): ".mp4" | ".mov" {
-  return rawKey.toLowerCase().endsWith(".mov") ? ".mov" : ".mp4";
+function outputExtFromRawPath(rawPath: string): ".mp4" | ".mov" {
+  return rawPath.toLowerCase().endsWith(".mov") ? ".mov" : ".mp4";
 }
 
 export async function tryFinalizeBatch(batchId: string): Promise<void> {
@@ -59,7 +59,7 @@ export async function processSingleVideo(params: {
     return { ok: false, detail: "video not found" };
   }
 
-  const relRaw = video.rawS3Key.replace(/\\/g, "/");
+  const relRaw = video.rawMediaPath.replace(/\\/g, "/");
   if (!fileExistsRel(relRaw)) {
     await db
       .update(videos)
@@ -73,7 +73,7 @@ export async function processSingleVideo(params: {
     .set({ status: "processing" })
     .where(eq(videos.id, videoId));
 
-  const ext = outputExtFromRawKey(relRaw);
+  const ext = outputExtFromRawPath(relRaw);
   const processedRel = outRelPath(batchId, video.id, ext);
 
   const userRow = await db.query.users.findFirst({
@@ -97,7 +97,7 @@ export async function processSingleVideo(params: {
       .update(videos)
       .set({
         status: "complete",
-        processedS3Key: processedRel,
+        processedMediaPath: processedRel,
         processedAt: new Date(),
       })
       .where(eq(videos.id, videoId));
@@ -135,10 +135,10 @@ export async function processBatchVideosSync(
   }
 
   for (const v of vids) {
-    const rel = v.rawS3Key.replace(/\\/g, "/");
+    const rel = v.rawMediaPath.replace(/\\/g, "/");
     if (!fileExistsRel(rel)) {
       throw new Error(
-        `Upload missing on disk for ${v.rawS3Key}. Finish all uploads first.`
+        `Upload missing on disk for ${v.rawMediaPath}. Finish all uploads first.`
       );
     }
   }

@@ -1,10 +1,9 @@
 /**
- * BullMQ worker: DB-backed batches only (processSingleVideo reads Postgres).
- * Ephemeral upload flow uses POST /api/process (async) + process-status polling — not this worker.
+ * Optional BullMQ worker: DB-backed batches (processSingleVideo reads Postgres).
+ * The main upload flow uses POST /api/process + process-status polling instead.
  *
- * Run from `web/`:  npm run worker:video
- * Requires: REDIS_URL, DATABASE_URL, WORKER_URL, LOCAL_MEDIA_ROOT (same as
- * worker BOFBOT_MEDIA_ROOT) for on-disk raw files.
+ * Run from `web/`: npm run worker:video
+ * Requires: REDIS_URL, DATABASE_URL, WORKER_URL, and shared media paths on disk.
  */
 import { config } from "dotenv";
 import { resolve } from "path";

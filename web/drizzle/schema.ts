@@ -135,8 +135,8 @@ export const videos = pgTable("videos", {
   userId: text("user_id")
     .notNull()
     .references(() => users.id, { onDelete: "cascade" }),
-  rawS3Key: text("raw_s3_key").notNull(),
-  processedS3Key: text("processed_s3_key"),
+  rawMediaPath: text("raw_media_path").notNull(),
+  processedMediaPath: text("processed_media_path"),
   status: videoStatusEnum("status").notNull().default("pending"),
   hookTextUsed: text("hook_text_used"),
   colorPresetUsed: text("color_preset_used"),

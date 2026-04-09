@@ -1,23 +1,13 @@
 """
-FastAPI worker: download video, run tiktoked overlay, upload result.
+FastAPI worker: read raw video from local disk, run tiktoked overlay, write output to disk.
 
-Storage modes (mutually exclusive):
-  • **R2** — set R2_BUCKET, R2_ENDPOINT, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY.
-    Keys in the request are S3 object keys (e.g. raw/{batch}/{id}.mp4).
-  • **Local disk** — if R2 is not fully configured, use BOFBOT_MEDIA_ROOT
-    (or legacy TIKTOKED_MEDIA_ROOT; default <repo>/web/.data/media).
+Paths in requests are relative to the media root (forward slashes), e.g. raw/{batch}/{id}.mp4.
 
 Env:
-  BOFBOT_MEDIA_ROOT — local mode (preferred)
-  TIKTOKED_MEDIA_ROOT — local mode fallback
+  BOFBOT_MEDIA_ROOT — media root (preferred)
+  TIKTOKED_MEDIA_ROOT — legacy alias, same value
   TIKTOKED_CONFIG — optional path to config.json (default: repo root)
   WORKER_API_KEY — optional; if set, require Authorization: Bearer <key>
-  WORKER_FFMPEG_TIMEOUT_SEC — per ffmpeg step (default 120)
-
-R2 (S3-compatible, Cloudflare):
-  R2_BUCKET — e.g. bofbot
-  R2_ENDPOINT — https://<account_id>.r2.cloudflarestorage.com
-  R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY
 """
 from __future__ import annotations
 
@@ -29,15 +19,15 @@ import tempfile
 from pathlib import Path
 from typing import Any, Literal
 
-import boto3
-from botocore.config import Config
-from botocore.exceptions import ClientError
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field, model_validator
 
 import tiktoked
 
 log = logging.getLogger("bofbot.worker")
+
+# Per FFmpeg step (normalize, composite) — not configurable via env.
+FFMPEG_TIMEOUT_SEC = 120.0
 
 DEFAULT_BANNER_COLOR_PRESETS: list[dict[str, str]] = [
     {
@@ -90,7 +80,7 @@ class BannerColors(BaseModel):
 
 
 class ProcessRequest(BaseModel):
-    """Object key (R2) or path under media root (local), forward slashes."""
+    """Paths under media root, forward slashes."""
 
     video_rel_path: str = Field(..., description="e.g. raw/{batch}/{id}.mp4")
     processed_rel_path: str = Field(..., description="e.g. out/{batch}/{id}.mp4")
@@ -167,66 +157,6 @@ def _resolve_local_path(rel: str) -> Path:
     return out
 
 
-def _r2_configured() -> bool:
-    keys = (
-        "R2_BUCKET",
-        "R2_ENDPOINT",
-        "R2_ACCESS_KEY_ID",
-        "R2_SECRET_ACCESS_KEY",
-    )
-    return all(os.environ.get(k, "").strip() for k in keys)
-
-
-def _r2_bucket() -> str:
-    return os.environ["R2_BUCKET"].strip()
-
-
-def _s3_client():
-    endpoint = os.environ["R2_ENDPOINT"].strip().rstrip("/")
-    return boto3.client(
-        "s3",
-        endpoint_url=endpoint,
-        aws_access_key_id=os.environ["R2_ACCESS_KEY_ID"].strip(),
-        aws_secret_access_key=os.environ["R2_SECRET_ACCESS_KEY"].strip(),
-        region_name="auto",
-        config=Config(signature_version="s3v4"),
-    )
-
-
-def _content_type_for_suffix(suffix: str) -> str:
-    if suffix.lower() == ".mov":
-        return "video/quicktime"
-    return "video/mp4"
-
-
-def _download_r2_object(client, bucket: str, key: str, dest: Path) -> None:
-    try:
-        client.download_file(bucket, key, str(dest))
-    except ClientError as e:
-        code = e.response.get("Error", {}).get("Code", "")
-        if code in ("404", "NoSuchKey", "NotFound"):
-            raise HTTPException(
-                status_code=400, detail=f"input not found in R2: {key}"
-            ) from e
-        log.exception("R2 download failed")
-        raise HTTPException(status_code=500, detail=f"R2 download failed: {e}") from e
-
-
-def _upload_r2_object(
-    client, bucket: str, key: str, src: Path, content_type: str
-) -> None:
-    try:
-        extra = {"ContentType": content_type}
-        client.upload_file(str(src), bucket, key, ExtraArgs=extra)
-    except ClientError as e:
-        log.exception("R2 upload failed")
-        raise HTTPException(status_code=500, detail=f"R2 upload failed: {e}") from e
-
-
-def _ffmpeg_timeout() -> float:
-    return float(os.environ.get("WORKER_FFMPEG_TIMEOUT_SEC", "120"))
-
-
 def _verify_api_key(authorization: str | None = Header(None)) -> None:
     expected = os.environ.get("WORKER_API_KEY", "").strip()
     if not expected:
@@ -275,7 +205,11 @@ def _run_normalize_and_composite(
     tmp_out = tmp_dir / f"out{ext_out}"
     try:
         tiktoked.ffmpeg_normalize_video(
-            raw_copy, norm_path, int(cfg["video_width"]), int(cfg["video_height"]), timeout_sec=t_ffmpeg
+            raw_copy,
+            norm_path,
+            int(cfg["video_width"]),
+            int(cfg["video_height"]),
+            timeout_sec=t_ffmpeg,
         )
     except (RuntimeError, TimeoutError, FileNotFoundError) as e:
         log.exception("Normalize failed")
@@ -297,58 +231,18 @@ def _run_normalize_and_composite(
     return tmp_out
 
 
-def process_video_r2(req: ProcessRequest) -> ProcessResponse:
+def process_video(req: ProcessRequest) -> ProcessResponse:
     cfg = _load_cfg()
     preset_dict, hook_meta, color_meta = _build_preset(req)
-    t_ffmpeg = _ffmpeg_timeout()
-
-    key_in = _normalize_rel_key(req.video_rel_path)
-    key_out = _normalize_rel_key(req.processed_rel_path)
-    bucket = _r2_bucket()
-    client = _s3_client()
-
-    ext_in = _suffix_for_path(Path(key_in))
-    ext_out = _suffix_for_path(Path(key_out))
-
-    with tempfile.TemporaryDirectory(prefix="bofbot_worker_") as tmp:
-        tmp_path = Path(tmp)
-        raw_copy = tmp_path / f"in{ext_in}"
-
-        _download_r2_object(client, bucket, key_in, raw_copy)
-
-        wm = (req.watermark_text or "").strip() or None
-        tmp_out = _run_normalize_and_composite(
-            cfg,
-            raw_copy,
-            tmp_path,
-            ext_in,
-            ext_out,
-            preset_dict,
-            t_ffmpeg,
-            wm,
-        )
-
-        ct = _content_type_for_suffix(ext_out)
-        _upload_r2_object(client, bucket, key_out, tmp_out, ct)
-
-    return ProcessResponse(
-        processed_rel_path=req.processed_rel_path,
-        overlay_style=req.overlay_style,
-        hook_used=hook_meta,
-        color_preset_used=color_meta,
-    )
-
-
-def process_video_local(req: ProcessRequest) -> ProcessResponse:
-    cfg = _load_cfg()
-    preset_dict, hook_meta, color_meta = _build_preset(req)
-    t_ffmpeg = _ffmpeg_timeout()
+    t_ffmpeg = FFMPEG_TIMEOUT_SEC
 
     raw_abs = _resolve_local_path(req.video_rel_path)
     out_abs = _resolve_local_path(req.processed_rel_path)
 
     if not raw_abs.is_file():
-        raise HTTPException(status_code=400, detail=f"input not found: {req.video_rel_path}")
+        raise HTTPException(
+            status_code=400, detail=f"input not found: {req.video_rel_path}"
+        )
 
     out_abs.parent.mkdir(parents=True, exist_ok=True)
 
@@ -382,19 +276,12 @@ def process_video_local(req: ProcessRequest) -> ProcessResponse:
     )
 
 
-def process_video(req: ProcessRequest) -> ProcessResponse:
-    if _r2_configured():
-        return process_video_r2(req)
-    return process_video_local(req)
-
-
-app = FastAPI(title="BofBot Worker", version="0.4.0")
+app = FastAPI(title="BofBot Worker", version="0.5.0")
 
 
 @app.get("/health")
 def health() -> dict[str, str]:
-    mode = "r2" if _r2_configured() else "local"
-    return {"status": "ok", "storage": mode}
+    return {"status": "ok", "storage": "local"}
 
 
 @app.post("/process", response_model=ProcessResponse)
