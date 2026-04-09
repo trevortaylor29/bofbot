@@ -1,0 +1,19 @@
+[Unit]
+Description=BofBot Video Worker (FastAPI + uvicorn)
+After=network.target
+
+[Service]
+Type=simple
+User=root
+WorkingDirectory=/opt/bofbot
+EnvironmentFile=-/opt/bofbot/.env
+ExecStart=/opt/bofbot/venv/bin/uvicorn worker.app:app --host 0.0.0.0 --port 8000
+Restart=always
+RestartSec=5
+
+# Hardening (optional): uncomment after confirming the app runs
+# NoNewPrivileges=yes
+# PrivateTmp=yes
+
+[Install]
+WantedBy=multi-user.target

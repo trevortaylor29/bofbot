@@ -1,0 +1,74 @@
+{
+  "video_width": 1080,
+  "video_height": 1920,
+  "font_path": "fonts/TikTokSans-VariableFont_opsz,slnt,wdth,wght.ttf",
+  "emoji_font_path": "fonts/NotoColorEmoji.ttf",
+  "presets": [
+    {
+      "style": "banner",
+      "line1_text": "TRIPLE DISCOUNT ❤️",
+      "line1_bg_color": "#FF69B4",
+      "line1_text_color": "#FFFFFF",
+      "line2_text": "4 HOURS LEFT 😭😭",
+      "line2_bg_color": "#FF0000",
+      "line2_text_color": "#FFFFFF"
+    },
+    {
+      "style": "banner",
+      "line1_text": "40% OFF ❤️",
+      "line1_bg_color": "#DD00FF",
+      "line1_text_color": "#FFFFFF",
+      "line2_text": "4 HOURS LEFT 😭😭",
+      "line2_bg_color": "#FF0000",
+      "line2_text_color": "#FFFFFF"
+    },
+    {
+      "style": "banner",
+      "line1_text": "LARGE SALE❗",
+      "line1_bg_color": "#FF8C00",
+      "line1_text_color": "#FFFFFF",
+      "line2_text": "4 HOURS LEFT 😭😭",
+      "line2_bg_color": "#FF0000",
+      "line2_text_color": "#FFFFFF"
+    },
+    {
+      "style": "banner",
+      "line1_text": "TRIPLE DISCOUNT",
+      "line1_bg_color": "#FF0000",
+      "line1_text_color": "#FFFFFF",
+      "line2_text": "ENDS TODAY 🚨",
+      "line2_bg_color": "#FFFFFF",
+      "line2_text_color": "#000000"
+    },
+    {
+      "style": "banner",
+      "line1_text": "2x DISCOUNT 🚨",
+      "line1_bg_color": "#FF0000",
+      "line1_text_color": "#FFFFFF",
+      "line2_text": "ENDS TODAY",
+      "line2_bg_color": "#FFFFFF",
+      "line2_text_color": "#000000"
+    },
+    {
+      "style": "banner",
+      "line1_text": "40% OFF",
+      "line1_bg_color": "#FF0000",
+      "line1_text_color": "#FFFFFF",
+      "line2_text": "ENDS TODAY 🚨",
+      "line2_bg_color": "#FFFFFF",
+      "line2_text_color": "#000000"
+    },
+    {
+      "style": "fulltext",
+      "text": "If you waited until today you absolutely won because this is dirt cheap rn with free shipping"
+    },
+    {
+      "style": "fulltext",
+      "text": "TikTok bullied the price down and now this is on a massive sale with free shipping for the next few hours 😳"
+    },
+    {
+      "style": "fulltext",
+      "text": "Anyone else grabbing a boatload of these today since it's a fraction of the price?"
+    }
+  ]
+}

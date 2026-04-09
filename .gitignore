@@ -1,0 +1,51 @@
+# --- Secrets & credentials (never commit) ---
+.env
+.env.*
+!.env.example
+!.env*.example
+*.pem
+*.key
+*_rsa
+*_ecdsa
+*_ed25519
+*credentials*.json
+service-account*.json
+.secrets/
+secrets/
+
+# Local env / API keys sometimes dropped at repo root (e.g. droplet copy-paste)
+.env.local
+.env.production
+.env.development
+.envrc
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+.Python
+venv/
+.venv/
+*.egg-info/
+.eggs/
+dist/
+build/
+
+# --- Local runtime data ---
+web/.data/
+raw/
+archive/
+done/
+_out_overlay.png
+overlay_last.png
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+.idea/
+*.sublime-*
+
+# --- Logs ---
+*.log
