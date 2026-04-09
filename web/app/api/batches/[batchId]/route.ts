@@ -7,13 +7,13 @@ import { db } from "@/lib/db";
 
 export async function GET(
   _request: Request,
-  { params }: { params: Promise<{ id: string }> }
+  { params }: { params: Promise<{ batchId: string }> }
 ) {
   const userId = await getActorUserId();
-  const { id } = await params;
+  const { batchId } = await params;
 
   const batch = await db.query.batches.findFirst({
-    where: and(eq(batches.id, id), eq(batches.userId, userId)),
+    where: and(eq(batches.id, batchId), eq(batches.userId, userId)),
     with: { videos: true },
   });
 
