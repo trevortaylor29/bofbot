@@ -5,6 +5,12 @@ import { useCallback, useState } from "react";
 
 const PROCESS_POLL_MS = 3000;
 
+const IS_DEV = process.env.NODE_ENV === "development";
+
+function devOrProd<T>(dev: T, prod: T): T {
+  return IS_DEV ? dev : prod;
+}
+
 function formatEta(seconds: number): string {
   if (seconds <= 0) return "";
   if (seconds < 60) return `About ${seconds}s remaining`;
@@ -71,14 +77,15 @@ function isNetworkFetchFailure(e: unknown): boolean {
 
 function explainFetchError(e: unknown): string {
   if (isNetworkFetchFailure(e)) {
-    return (
+    return devOrProd(
       "Could not reach the Next.js server (browser reported a network error). " +
-      "Wait until the Next.js window shows “Ready”, then use the same host and port " +
-      "as that window (we pin dev to port 3000 — see `npm run dev` in web/package.json). " +
-      "Run `npm run dev` in the web folder or double‑click start.bat at the repo root; " +
-      "open http://127.0.0.1:3000/ (not a file:// page). " +
-      "If port 3000 is already in use, free it or change the dev port and open the new URL. " +
-      "If the server is running, check that terminal for errors and try disabling VPN/ad‑block for localhost."
+        "Wait until the Next.js window shows “Ready”, then use the same host and port " +
+        "as that window (we pin dev to port 3000 — see `npm run dev` in web/package.json). " +
+        "Run `npm run dev` in the web folder or double‑click start.bat at the repo root; " +
+        "open http://127.0.0.1:3000/ (not a file:// page). " +
+        "If port 3000 is already in use, free it or change the dev port and open the new URL. " +
+        "If the server is running, check that terminal for errors and try disabling VPN/ad‑block for localhost.",
+      "Could not reach the server. Check your connection and try again."
     );
   }
   if (e instanceof Error && e.cause instanceof Error) {
@@ -281,7 +288,10 @@ export function UploadFlow() {
         createData = createRaw ? (JSON.parse(createRaw) as typeof createData) : {};
       } catch {
         throw new Error(
-          `Bad response from /api/batches (HTTP ${createRes.status}). Check the Next.js terminal — the route may have crashed.`
+          devOrProd(
+            `Bad response from /api/batches (HTTP ${createRes.status}). Check the Next.js terminal — the route may have crashed.`,
+            `Bad response from /api/batches (HTTP ${createRes.status}). Please try again.`
+          )
         );
       }
       if (!createRes.ok) {
@@ -311,7 +321,10 @@ export function UploadFlow() {
           putJson = putRaw ? (JSON.parse(putRaw) as typeof putJson) : {};
         } catch {
           throw new Error(
-            `Upload failed for ${file.name} (HTTP ${put.status}). Response was not JSON — see Next.js terminal.`
+            devOrProd(
+              `Upload failed for ${file.name} (HTTP ${put.status}). Response was not JSON — see Next.js terminal.`,
+              `Upload failed for ${file.name} (HTTP ${put.status}). Please try again.`
+            )
           );
         }
         if (!put.ok) {
@@ -350,7 +363,10 @@ export function UploadFlow() {
         procStart = procRaw ? (JSON.parse(procRaw) as typeof procStart) : {};
       } catch {
         throw new Error(
-          `Bad response from /api/process (HTTP ${procRes.status}). Check Next.js and the Python worker terminal.`
+          devOrProd(
+            `Bad response from /api/process (HTTP ${procRes.status}). Check Next.js and the Python worker terminal.`,
+            `Bad response from /api/process (HTTP ${procRes.status}). Processing may be temporarily unavailable — please try again.`
+          )
         );
       }
       if (procRes.status === 409) {
@@ -362,7 +378,10 @@ export function UploadFlow() {
       if (!procRes.ok || !procStart.accepted) {
         throw new Error(
           procStart.error ??
-            "Processing failed. Is WORKER_URL set and the worker running on port 8000?"
+            devOrProd(
+              "Processing failed. Is WORKER_URL set and the worker running on port 8000?",
+              "Processing failed. Please try again in a few minutes."
+            )
         );
       }
 
@@ -403,7 +422,10 @@ export function UploadFlow() {
         }
         if (statusRes.status === 404 || statusData.found === false) {
           throw new Error(
-            "Lost batch status (dev server may have restarted). Run Process videos again."
+            devOrProd(
+              "Lost batch status (dev server may have restarted). Run Process videos again.",
+              "Batch status was lost. Please run Process videos again."
+            )
           );
         }
         lastStatus = statusData;
@@ -763,16 +785,18 @@ export function UploadFlow() {
             ))}
           </ul>
         ) : null}
-        <p className="mt-3 text-xs text-zinc-600">
-          <span className="text-zinc-500">Local dev:</span> uploads go to{" "}
-          <code className="text-zinc-500">web/.data/media/raw/</code>, outputs
-          to <code className="text-zinc-500">out/</code>. Set{" "}
-          <code className="text-zinc-500">WORKER_URL</code> to your FastAPI
-          worker; worker and Next must share the same folder (see{" "}
-          <code className="text-zinc-500">BOFBOT_MEDIA_ROOT</code> /{" "}
-          <code className="text-zinc-500">LOCAL_MEDIA_ROOT</code> in{" "}
-          <code className="text-zinc-500">.env.example</code>).
-        </p>
+        {IS_DEV ? (
+          <p className="mt-3 text-xs text-zinc-600">
+            <span className="text-zinc-500">Local dev:</span> uploads go to{" "}
+            <code className="text-zinc-500">web/.data/media/raw/</code>, outputs
+            to <code className="text-zinc-500">out/</code>. Set{" "}
+            <code className="text-zinc-500">WORKER_URL</code> to your FastAPI
+            worker; worker and Next must share the same folder (see{" "}
+            <code className="text-zinc-500">BOFBOT_MEDIA_ROOT</code> /{" "}
+            <code className="text-zinc-500">LOCAL_MEDIA_ROOT</code> in{" "}
+            <code className="text-zinc-500">.env.example</code>).
+          </p>
+        ) : null}
       </section>
 
       <button
@@ -790,9 +814,9 @@ export function UploadFlow() {
             Processed videos
           </h2>
           <p className="mt-1 text-xs text-emerald-200/70">
-            Files are served from this dev server. Open each link to download
-            (local disk only — no cloud, history not saved unless you wire the DB
-            back in).
+            {IS_DEV
+              ? "Files are served from this dev server. Open each link to download (local disk only — no cloud, history not saved unless you wire the DB back in)."
+              : "Open each link to download your files."}
           </p>
           {zipBatchId ? (
             <p className="mt-3">
