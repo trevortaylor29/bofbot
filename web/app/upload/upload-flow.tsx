@@ -282,13 +282,7 @@ export function UploadFlow() {
       let createData: {
         error?: string;
         batchId?: string;
-        uploads?: {
-          videoId: string;
-          contentType: string;
-          rawRelPath?: string;
-          uploadUrl?: string;
-          uploadHeaders?: Record<string, string>;
-        }[];
+        uploads?: { videoId: string; contentType: string }[];
       };
       try {
         createData = createRaw ? (JSON.parse(createRaw) as typeof createData) : {};
@@ -313,21 +307,6 @@ export function UploadFlow() {
         const u = uploads[i]!;
         const file = files[i]!;
         setStep(`Uploading ${i + 1} / ${uploads.length}…`);
-
-        if (u.uploadUrl && u.rawRelPath) {
-          const put = await fetch(u.uploadUrl, {
-            method: "PUT",
-            body: file,
-            headers: u.uploadHeaders ?? { "Content-Type": u.contentType },
-          });
-          if (!put.ok) {
-            throw new Error(
-              `Direct upload failed for ${file.name} (HTTP ${put.status}).`
-            );
-          }
-          uploaded.push({ videoId: u.videoId, rawRelPath: u.rawRelPath });
-          continue;
-        }
 
         const fd = new FormData();
         fd.append("batchId", batchId);

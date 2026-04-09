@@ -4,11 +4,6 @@ import { Readable } from "node:stream";
 import path from "path";
 
 import { absFromRel } from "@/lib/local-media";
-import {
-  isR2DirectUploadConfigured,
-  normalizeR2ObjectKey,
-  presignGetDownload,
-} from "@/lib/r2-upload";
 
 function contentTypeForName(name: string): string {
   if (name.toLowerCase().endsWith(".mov")) return "video/quicktime";
@@ -36,20 +31,6 @@ export async function GET(
   const rel = path
     .join("out", decodedBatch, decodedFile)
     .replace(/\\/g, "/");
-
-  if (isR2DirectUploadConfigured()) {
-    const key = normalizeR2ObjectKey(rel);
-    if (!key) {
-      return Response.json({ error: "Invalid path" }, { status: 400 });
-    }
-    try {
-      const url = await presignGetDownload(key, decodedFile);
-      return Response.redirect(url, 302);
-    } catch (e) {
-      console.error("[bofbot] presign single download", e);
-      return Response.json({ error: "Not found" }, { status: 404 });
-    }
-  }
 
   let abs: string;
   try {

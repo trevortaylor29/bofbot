@@ -1,11 +1,6 @@
 import type { HooksSnapshot } from "@/drizzle/schema";
 import { fileExistsRel, outRelPath } from "@/lib/local-media";
 import {
-  isR2DirectUploadConfigured,
-  normalizeR2ObjectKey,
-  rawObjectExistsInR2,
-} from "@/lib/r2-upload";
-import {
   buildLocalWorkerPayload,
   callProcessingWorker,
   type WorkerProcessOptions,
@@ -31,7 +26,7 @@ function extFromRel(p: string): ".mp4" | ".mov" {
 }
 
 /**
- * Run Python worker for each video: local disk (LOCAL_MEDIA_ROOT) or R2 keys when R2_* is set.
+ * Run local Python worker for each video (paths under BOFBOT_MEDIA_ROOT / default web/.data/media).
  */
 export async function processVideosLocal(params: {
   batchId: string;
@@ -39,7 +34,7 @@ export async function processVideosLocal(params: {
   videos: { videoId: string; rawRelPath: string }[];
   workerOptions?: WorkerProcessOptions;
   /** Fires after each video finishes (success or failure), for progress / ETA. */
-  onVideoDone?: (info: VideoProgressInfo) => void | Promise<void>;
+  onVideoDone?: (info: VideoProgressInfo) => void;
 }): Promise<{ results: LocalVideoResult[] }> {
   const { batchId, snapshot, videos, workerOptions, onVideoDone } = params;
   const results: LocalVideoResult[] = [];
@@ -50,28 +45,18 @@ export async function processVideosLocal(params: {
     const t0 = Date.now();
     let result: LocalVideoResult;
 
-    const useR2 = isR2DirectUploadConfigured();
-    const rawPresent = useR2
-      ? await rawObjectExistsInR2(v.rawRelPath)
-      : fileExistsRel(v.rawRelPath);
-
-    if (!rawPresent) {
+    if (!fileExistsRel(v.rawRelPath)) {
       result = {
         videoId: v.videoId,
         rawRelPath: v.rawRelPath,
         ok: false,
-        detail: useR2
-          ? `raw object not in R2 at key derived from rawRelPath (see server logs for exact HeadObject key)`
-          : "raw file missing — finish upload first",
+        detail: "raw file missing — finish upload first",
       };
     } else {
       const ext = extFromRel(v.rawRelPath);
       const processedRel = outRelPath(batchId, v.videoId, ext);
-      const rawKeyForWorker = useR2
-        ? (normalizeR2ObjectKey(v.rawRelPath) ?? v.rawRelPath)
-        : v.rawRelPath;
       const payload = buildLocalWorkerPayload(
-        rawKeyForWorker,
+        v.rawRelPath,
         processedRel,
         snapshot,
         workerOptions
@@ -96,9 +81,7 @@ export async function processVideosLocal(params: {
 
     const durationMs = Date.now() - t0;
     results.push(result);
-    await Promise.resolve(
-      onVideoDone?.({ index: i, total, result, durationMs })
-    );
+    onVideoDone?.({ index: i, total, result, durationMs });
   }
 
   return { results };
