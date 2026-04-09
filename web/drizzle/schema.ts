@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  date,
   integer,
   jsonb,
   pgEnum,
@@ -54,6 +55,9 @@ export const users = pgTable("users", {
   videosProcessedThisPeriod: integer("videos_processed_this_period")
     .notNull()
     .default(0),
+  /** UTC calendar date for `videos_processed_today`; null = no activity this UTC day yet. */
+  usageDay: date("usage_day", { mode: "date" }),
+  videosProcessedToday: integer("videos_processed_today").notNull().default(0),
   billingPeriodStart: timestamp("billing_period_start", {
     withTimezone: true,
     mode: "date",

@@ -1,6 +1,6 @@
 /**
  * Optional BullMQ worker: DB-backed batches (processSingleVideo reads Postgres).
- * The main upload flow uses POST /api/process + process-status polling instead.
+ * The web app no longer exposes upload/process routes; use this from the desktop app or a local stack.
  *
  * Run from `web/`: npm run worker:video
  * Requires: REDIS_URL, DATABASE_URL, WORKER_URL, and shared media paths on disk.

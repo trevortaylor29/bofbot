@@ -1,15 +1,12 @@
-"use client";
-
-import { SessionProvider } from "next-auth/react";
+import { AuthChrome } from "@/components/auth-chrome";
 
 /**
- * Only login/signup use next-auth/react (signIn). Wrapping the whole app broke
- * production RSC for `/` (plain 500). Scoped provider keeps those routes working.
+ * Login/signup — same visual language as the marketing site (dark + coral).
  */
 export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  return <SessionProvider>{children}</SessionProvider>;
+  return <AuthChrome>{children}</AuthChrome>;
 }

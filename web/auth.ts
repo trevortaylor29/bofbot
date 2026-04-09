@@ -6,6 +6,7 @@ import type { NextAuthConfig } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 
+import { authConfig } from "@/auth.config";
 import * as schema from "@/drizzle/schema";
 import { db } from "@/lib/db";
 
@@ -53,38 +54,18 @@ const providers: NextAuthConfig["providers"] = [
   }),
 ];
 
-const authSecret =
-  process.env.AUTH_SECRET ||
-  process.env.NEXTAUTH_SECRET ||
-  "development-only-secret-min-32-characters-long";
-
 export const { handlers, auth, signIn, signOut } = NextAuth({
-  trustHost: true,
-  secret: authSecret,
+  ...authConfig,
   adapter: DrizzleAdapter(db, {
     usersTable: schema.users,
     accountsTable: schema.accounts,
     sessionsTable: schema.sessions,
     verificationTokensTable: schema.verificationTokens,
   }),
-  // JWT so email/password works reliably; adapter still persists OAuth users/accounts.
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
-  pages: {
-    signIn: "/login",
-  },
   providers,
-  callbacks: {
-    jwt({ token, user }) {
-      if (user) {
-        token.id = user.id;
-      }
-      return token;
-    },
-    session({ session, token }) {
-      if (session.user && token.id) {
-        session.user.id = token.id as string;
-      }
-      return session;
-    },
-  },
+  /**
+   * Auth.js defaults to database sessions when an adapter is present.
+   * Credentials + Drizzle must stay on JWT so the session cookie is stable on every route.
+   */
+  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
 });

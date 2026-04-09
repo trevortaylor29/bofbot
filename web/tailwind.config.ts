@@ -11,6 +11,29 @@ export default {
       colors: {
         background: "var(--background)",
         foreground: "var(--foreground)",
+        marketing: {
+          bg: "#0a0a0a",
+          surface: "#111111",
+          border: "rgba(255,255,255,0.08)",
+        },
+      },
+      fontFamily: {
+        display: ["var(--font-display)", "system-ui", "sans-serif"],
+        jakarta: ["var(--font-jakarta)", "system-ui", "sans-serif"],
+      },
+      keyframes: {
+        glow: {
+          "0%, 100%": { opacity: "0.55" },
+          "50%": { opacity: "0.95" },
+        },
+        "hero-marquee": {
+          "0%": { transform: "translateX(0)" },
+          "100%": { transform: "translateX(-50%)" },
+        },
+      },
+      animation: {
+        glow: "glow 4s ease-in-out infinite",
+        "hero-marquee": "hero-marquee 35s linear infinite",
       },
     },
   },

@@ -1,5 +1,5 @@
 /**
- * In-memory registration for ephemeral upload batches (no DB).
+ * In-memory registration for ephemeral upload batches (desktop / local API — not exposed on the marketing site).
  * Prevents arbitrary writes: only registered videoIds can be uploaded.
  *
  * Store lives on globalThis so every Next route bundle shares one Map. Without

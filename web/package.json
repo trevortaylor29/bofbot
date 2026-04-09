@@ -13,7 +13,8 @@
     "db:generate": "drizzle-kit generate",
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
-    "db:studio": "drizzle-kit studio"
+    "db:studio": "drizzle-kit studio",
+    "stripe:seed": "node scripts/stripe-seed-products.mjs"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",
@@ -22,12 +23,14 @@
     "bullmq": "^5.34.5",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.45.2",
+    "framer-motion": "^12.38.0",
     "ioredis": "^5.4.2",
     "next": "^16.2.3",
     "next-auth": "^5.0.0-beta.30",
     "pg": "^8.20.0",
     "react": "^19.0.0",
-    "react-dom": "^19.0.0"
+    "react-dom": "^19.0.0",
+    "stripe": "^17.7.0"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3",

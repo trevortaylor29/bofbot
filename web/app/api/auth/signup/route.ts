@@ -67,7 +67,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Cannot reach the database (connection refused). Start Postgres and set DATABASE_URL in .env.local.",
+            "Cannot reach the database. Set DATABASE_URL in .env.local (e.g. your Neon connection string) and run migrations.",
           code: "DB_CONNECTION",
         },
         { status: 503 }

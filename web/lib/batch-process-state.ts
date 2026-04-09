@@ -3,7 +3,7 @@ import { processVideosLocal } from "@/lib/process-local-videos";
 import type { WorkerProcessOptions } from "@/lib/worker";
 
 /**
- * In-memory batch processing progress for async POST /api/process + polling.
+ * In-memory batch processing progress for async processing (e.g. desktop app or a future local server).
  * Uses globalThis so all route bundles share state (same pattern as pending batches).
  */
 export type BatchProcessStatus = {
