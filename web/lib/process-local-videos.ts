@@ -1,6 +1,11 @@
 import type { HooksSnapshot } from "@/drizzle/schema";
 import { fileExistsRel, outRelPath } from "@/lib/local-media";
 import {
+  isR2DirectUploadConfigured,
+  normalizeR2ObjectKey,
+  rawObjectExistsInR2,
+} from "@/lib/r2-upload";
+import {
   buildLocalWorkerPayload,
   callProcessingWorker,
   type WorkerProcessOptions,
@@ -26,7 +31,7 @@ function extFromRel(p: string): ".mp4" | ".mov" {
 }
 
 /**
- * Run Python worker for each raw file on disk (paths under LOCAL_MEDIA_ROOT).
+ * Run Python worker for each video: local disk (LOCAL_MEDIA_ROOT) or R2 keys when R2_* is set.
  */
 export async function processVideosLocal(params: {
   batchId: string;
@@ -45,18 +50,28 @@ export async function processVideosLocal(params: {
     const t0 = Date.now();
     let result: LocalVideoResult;
 
-    if (!fileExistsRel(v.rawRelPath)) {
+    const useR2 = isR2DirectUploadConfigured();
+    const rawPresent = useR2
+      ? await rawObjectExistsInR2(v.rawRelPath)
+      : fileExistsRel(v.rawRelPath);
+
+    if (!rawPresent) {
       result = {
         videoId: v.videoId,
         rawRelPath: v.rawRelPath,
         ok: false,
-        detail: "raw file missing — finish upload first",
+        detail: useR2
+          ? `raw object not in R2 at key derived from rawRelPath (see server logs for exact HeadObject key)`
+          : "raw file missing — finish upload first",
       };
     } else {
       const ext = extFromRel(v.rawRelPath);
       const processedRel = outRelPath(batchId, v.videoId, ext);
+      const rawKeyForWorker = useR2
+        ? (normalizeR2ObjectKey(v.rawRelPath) ?? v.rawRelPath)
+        : v.rawRelPath;
       const payload = buildLocalWorkerPayload(
-        v.rawRelPath,
+        rawKeyForWorker,
         processedRel,
         snapshot,
         workerOptions
