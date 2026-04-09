@@ -842,6 +842,7 @@ def ffmpeg_normalize_video(
         f"scale={width}:{height}:force_original_aspect_ratio=decrease,"
         f"pad={width}:{height}:(ow-iw)/2:(oh-ih)/2,setsar=1"
     )
+    has_audio = _video_has_audio(video_in)
     cmd: list[str] = [
         "ffmpeg",
         "-y",
@@ -850,16 +851,26 @@ def ffmpeg_normalize_video(
         "warning",
         "-i",
         str(video_in),
-        "-vf",
-        vf,
-        "-c:v",
-        "libx264",
-        "-crf",
-        "18",
-        "-preset",
-        "medium",
+        # First video + first audio only: iPhone spatial (e.g. apac) lives on extra
+        # streams FFmpeg may fail to decode; stereo is typically 0:a:0.
+        "-map",
+        "0:v:0",
     ]
-    if _video_has_audio(video_in):
+    if has_audio:
+        cmd.extend(["-map", "0:a:0"])
+    cmd.extend(
+        [
+            "-vf",
+            vf,
+            "-c:v",
+            "libx264",
+            "-crf",
+            "18",
+            "-preset",
+            "medium",
+        ]
+    )
+    if has_audio:
         cmd.extend(["-c:a", "aac", "-b:a", "192k"])
     else:
         cmd.append("-an")
