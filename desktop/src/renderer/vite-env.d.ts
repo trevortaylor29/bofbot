@@ -5,6 +5,11 @@ import type { BatchPayload, ProgressEvent } from "./types";
 declare global {
   interface Window {
     bofbot: {
+      platform: NodeJS.Platform;
+      getRuntimeInfo: () => Promise<{
+        isPackaged: boolean;
+        platform: NodeJS.Platform;
+      }>;
       login: (
         email: string,
         password: string
@@ -53,6 +58,7 @@ declare global {
           }
         | { ok: false; error: string }
       >;
+      uninstallApp: () => Promise<{ ok: boolean; error?: string }>;
       onUpdateAvailable: (
         fn: (data: {
           version: string;

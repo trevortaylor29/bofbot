@@ -401,6 +401,93 @@ function HowItWorksSection() {
   );
 }
 
+function AppleGlyph({ className }: { className?: string }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="currentColor" aria-hidden>
+      <path d="M16.365 1.43c0 1.14-.493 2.27-1.177 3.08-.744.9-1.99 1.57-2.987 1.57-.12 0-.23-.02-.3-.03-.01-.06-.04-.22-.04-.39 0-1.15.572-2.27 1.206-2.98.804-.94 2.142-1.64 3.248-1.68.03.13.05.28.05.43zm4.565 15.71c-.03.07-.463 1.58-1.518 3.12-.945 1.34-1.94 2.71-3.43 2.71-1.517 0-1.9-.88-3.63-.88-1.698 0-2.302.91-3.67.91-1.377 0-2.332-1.26-3.428-2.8-1.287-1.82-2.323-4.63-2.323-7.28 0-4.28 2.797-6.55 5.552-6.55 1.448 0 2.675.95 3.6.95.865 0 2.222-1.09 3.822-1.09 1.498 0 2.866.56 3.83 1.48-.283.3-1.87 1.95-1.87 4.36 0 3.32 2.63 4.44 2.746 4.51z" />
+    </svg>
+  );
+}
+
+function GoogleDriveGlyph({ className }: { className?: string }) {
+  /* Simplified Drive wedge mark (brand colors, low-key at small size) */
+  return (
+    <svg
+      className={className}
+      viewBox="0 0 87.3 78"
+      aria-hidden
+      preserveAspectRatio="xMidYMid meet"
+    >
+      <path fill="#0066DA" d="M6.6 66.85 18.75 45.78h41.85L48.45 66.85z" />
+      <path fill="#00AC47" d="M43.5 24.78 31.35 45.85l21.15 36.5 12.15-21.07z" />
+      <path fill="#EA4335" d="M21.45 45.85 6.45 71.78l42.9-.08 15-25.93z" />
+    </svg>
+  );
+}
+
+function GetVideosToPcSection() {
+  return (
+    <section
+      aria-label="Getting videos onto your computer"
+      className="scroll-mt-24 border-y border-white/[0.04] bg-[#0a0a0a]/80 px-5 py-14 sm:px-6 sm:py-16"
+    >
+      <div className="mx-auto max-w-4xl">
+        <motion.h2
+          className="font-display text-center text-lg font-semibold tracking-tight text-zinc-300 sm:text-xl"
+          {...fadeUp}
+        >
+          Get videos to your PC in seconds
+        </motion.h2>
+        <motion.p
+          className="mx-auto mt-2 max-w-lg text-center text-xs text-zinc-600"
+          {...fadeUp}
+          transition={{ ...fadeUp.transition, delay: 0.04 }}
+        >
+          No heavy workflow — just sync, then point BofBot at the folder.
+        </motion.p>
+        <div className="mt-10 grid gap-5 sm:grid-cols-2 sm:gap-6">
+          <motion.div
+            className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-5 sm:px-6 sm:py-6"
+            {...itemFade}
+            transition={{ ...itemFade.transition, delay: 0.06 }}
+          >
+            <div className="mb-3 flex items-center gap-2.5">
+              <span className="inline-flex rounded-lg bg-zinc-800/60 p-2 text-zinc-400">
+                <AppleGlyph className="h-5 w-5" />
+              </span>
+              <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                iPhone / Mac
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed text-zinc-500">
+              Turn on iCloud Photos — your videos sync instantly to your Mac. No
+              cables, no transfers.
+            </p>
+          </motion.div>
+          <motion.div
+            className="rounded-xl border border-white/[0.06] bg-white/[0.02] px-5 py-5 sm:px-6 sm:py-6"
+            {...itemFade}
+            transition={{ ...itemFade.transition, delay: 0.1 }}
+          >
+            <div className="mb-3 flex items-center gap-2.5">
+              <span className="inline-flex rounded-lg bg-zinc-800/60 p-2">
+                <GoogleDriveGlyph className="h-5 w-5" />
+              </span>
+              <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
+                iPhone or Android + Windows
+              </span>
+            </div>
+            <p className="text-sm leading-relaxed text-zinc-500">
+              Install Google Drive on your phone. Videos sync to your PC
+              automatically. Drop the folder into BofBot and you&apos;re done.
+            </p>
+          </motion.div>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 const features = [
   {
     title: "Batch processing — 50 videos in minutes",
@@ -536,6 +623,7 @@ function PricingSection() {
     popular: boolean;
     cta: string;
     bullets: ReactNode[];
+    excludedBullets?: string[];
   }[] = [
     {
       id: "free",
@@ -545,6 +633,11 @@ function PricingSection() {
       popular: false,
       cta: "Get started free",
       bullets: ["3 videos per day", "Watermark on export"],
+      excludedBullets: [
+        "No watermark",
+        "Custom hooks",
+        "Priority processing",
+      ],
     },
     {
       id: "starter",
@@ -559,6 +652,12 @@ function PricingSection() {
         "Batch Upload",
         "Hook Rotation",
         "Up to 5 custom hooks",
+      ],
+      excludedBullets: [
+        "Unlimited videos",
+        "Unlimited custom hooks",
+        "Priority processing",
+        "Early access to features",
       ],
     },
     {
@@ -717,6 +816,20 @@ function PricingSection() {
                         ✓
                       </span>
                       <span className="leading-snug">{line}</span>
+                    </li>
+                  ))}
+                  {plan.excludedBullets?.map((line, j) => (
+                    <li
+                      key={`ex-${j}`}
+                      className="flex gap-2.5 text-zinc-500/90"
+                    >
+                      <span
+                        className="shrink-0 text-[#f43f5e]/40"
+                        aria-hidden
+                      >
+                        ✗
+                      </span>
+                      <span className="leading-snug text-zinc-500">{line}</span>
                     </li>
                   ))}
                 </ul>
@@ -908,6 +1021,8 @@ export function LandingPage() {
         <HeroSection />
         <SectionDivider />
         <HowItWorksSection />
+        <SectionDivider />
+        <GetVideosToPcSection />
         <SectionDivider />
         <FeaturesSection />
         <SectionDivider />

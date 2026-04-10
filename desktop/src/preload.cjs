@@ -1,6 +1,9 @@
 const { contextBridge, ipcRenderer } = require("electron");
 
 contextBridge.exposeInMainWorld("bofbot", {
+  platform: process.platform,
+  getRuntimeInfo: () =>
+    ipcRenderer.invoke("app:getRuntimeInfo"),
   login: (email, password) => ipcRenderer.invoke("auth:login", email, password),
   logout: () => ipcRenderer.invoke("auth:logout"),
   getSession: () => ipcRenderer.invoke("auth:getSession"),
@@ -41,6 +44,7 @@ contextBridge.exposeInMainWorld("bofbot", {
   },
   downloadAppUpdate: () => ipcRenderer.invoke("update:download"),
   checkForUpdates: () => ipcRenderer.invoke("update:check"),
+  uninstallApp: () => ipcRenderer.invoke("app:uninstall"),
   onUpdateAvailable: (fn) => {
     const channel = "update-available";
     const listener = (_e, data) => fn(data);

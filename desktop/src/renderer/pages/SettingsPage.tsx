@@ -1,5 +1,7 @@
 import { useEffect, useState } from "react";
 
+import { UninstallConfirmModal } from "../components/UninstallConfirmModal";
+
 type Props = {
   email: string;
   onBack: () => void;
@@ -13,11 +15,23 @@ export function SettingsPage({ email, onBack, onLogout }: Props) {
   const [updateCheckMessage, setUpdateCheckMessage] = useState<string | null>(
     null
   );
+  const [canUninstallFromSettings, setCanUninstallFromSettings] =
+    useState(false);
+  const [uninstallModalOpen, setUninstallModalOpen] = useState(false);
+  const [uninstallBusy, setUninstallBusy] = useState(false);
+  const [uninstallErr, setUninstallErr] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       const p = await window.bofbot.getMediaRoot();
       setMediaRoot(p);
+    })();
+  }, []);
+
+  useEffect(() => {
+    void (async () => {
+      const r = await window.bofbot.getRuntimeInfo();
+      setCanUninstallFromSettings(r.platform === "win32" && r.isPackaged);
     })();
   }, []);
 
@@ -61,8 +75,37 @@ export function SettingsPage({ email, onBack, onLogout }: Props) {
     }
   }
 
+  async function confirmUninstall() {
+    setUninstallErr(null);
+    setUninstallBusy(true);
+    try {
+      const r = await window.bofbot.uninstallApp();
+      setUninstallBusy(false);
+      if (!r.ok) {
+        setUninstallErr(r.error ?? "Uninstall failed.");
+        return;
+      }
+      setUninstallModalOpen(false);
+    } catch {
+      setUninstallBusy(false);
+      setUninstallErr("Uninstall failed.");
+    }
+  }
+
   return (
     <div style={{ flex: 1, display: "flex", flexDirection: "column", minHeight: 0 }}>
+      {uninstallModalOpen ? (
+        <UninstallConfirmModal
+          busy={uninstallBusy}
+          error={uninstallErr}
+          onConfirm={() => void confirmUninstall()}
+          onCancel={() => {
+            if (uninstallBusy) return;
+            setUninstallModalOpen(false);
+            setUninstallErr(null);
+          }}
+        />
+      ) : null}
       <header className="app-top-bar">
         <button type="button" className="btn-ghost" onClick={onBack}>
           ← Back
@@ -134,6 +177,24 @@ export function SettingsPage({ email, onBack, onLogout }: Props) {
           <button type="button" className="btn-ghost" style={{ marginTop: "var(--section-gap)" }} onClick={onLogout}>
             Log out
           </button>
+
+          {canUninstallFromSettings ? (
+            <div style={{ marginTop: "2rem", paddingTop: "1.25rem", borderTop: "1px solid var(--border)" }}>
+              <button
+                type="button"
+                className="btn-danger-outline"
+                onClick={() => {
+                  setUninstallErr(null);
+                  setUninstallModalOpen(true);
+                }}
+              >
+                Uninstall BofBot
+              </button>
+              <p style={{ color: "var(--muted-dim)", fontSize: "0.75rem", margin: "0.5rem 0 0", lineHeight: 1.45 }}>
+                Removes the app and local data (%AppData%\Roaming\bofbot-desktop).
+              </p>
+            </div>
+          ) : null}
         </div>
       </div>
     </div>

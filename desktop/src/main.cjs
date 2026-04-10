@@ -369,6 +369,83 @@ function registerIpc({ ipcMain }) {
     return { ok: true };
   });
 
+  ipcMain.handle("app:getRuntimeInfo", () => ({
+    isPackaged: app.isPackaged,
+    platform: process.platform,
+  }));
+
+  /**
+   * Windows packaged only: remove userData (Roaming), then run NSIS uninstaller /S and quit.
+   */
+  ipcMain.handle("app:uninstall", async () => {
+    if (process.platform !== "win32") {
+      return {
+        ok: false,
+        error: "Uninstall from Settings is only available on Windows.",
+      };
+    }
+    if (!app.isPackaged) {
+      return {
+        ok: false,
+        error: "Uninstall from Settings is only available in the installed app.",
+      };
+    }
+    killTree(workerProc);
+    workerProc = null;
+
+    const userData = app.getPath("userData");
+    try {
+      fs.rmSync(userData, { recursive: true, force: true });
+    } catch (e) {
+      console.warn("[desktop] userData remove:", e?.message || e);
+    }
+
+    const instDir = path.dirname(process.execPath);
+    let uninst = null;
+    try {
+      const names = fs.readdirSync(instDir);
+      const hit = names.find((n) => /^Uninstall.*\.exe$/i.test(n));
+      if (hit) uninst = path.join(instDir, hit);
+    } catch (e) {
+      console.warn("[desktop] list install dir:", e?.message || e);
+    }
+    if (!uninst) {
+      const fallback = path.join(instDir, "Uninstall BofBot.exe");
+      if (fs.existsSync(fallback)) uninst = fallback;
+    }
+    if (!uninst || !fs.existsSync(uninst)) {
+      return {
+        ok: false,
+        error:
+          "Could not find the uninstaller. Remove BofBot from Settings → Apps → Installed apps.",
+      };
+    }
+
+    try {
+      spawn(uninst, ["/S"], {
+        detached: true,
+        stdio: "ignore",
+        windowsHide: true,
+      }).unref();
+    } catch (e) {
+      return {
+        ok: false,
+        error: e instanceof Error ? e.message : String(e),
+      };
+    }
+
+    setImmediate(() => {
+      try {
+        mainWindow?.destroy();
+      } catch (_) {
+        /* ignore */
+      }
+      app.quit();
+    });
+
+    return { ok: true };
+  });
+
   ipcMain.handle("batch:recent", async () => getRecentBatches());
 
   ipcMain.handle("batch:deleteAllRecentOutput", async () =>
