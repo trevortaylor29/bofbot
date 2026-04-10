@@ -11,6 +11,8 @@ import {
   PricingFreeCta,
 } from "@/components/marketing/PricingCheckoutButton";
 import { BOFBOT_WINDOWS_INSTALLER_URL } from "@/lib/bofbot-desktop-installer";
+import { planDefinition } from "@/lib/plans";
+import { WINDOWS_SMARTSCREEN_FAQ } from "@/lib/windows-install-security-note";
 
 /** SVG fractal noise tile (encoded for data URL). */
 const NOISE_DATA_URI =
@@ -130,16 +132,17 @@ function Nav() {
   );
 }
 
-/** Five hero preview clips (`demo1`–`demo5`), shown in one row. */
+/** Eleven real BofBot output clips (`demo1`–`demo11`) in phone-style frames. */
+const HERO_DEMO_COUNT = 11;
 const HERO_OUTPUT_VIDEOS = Array.from(
-  { length: 5 },
+  { length: HERO_DEMO_COUNT },
   (_, i) => `/videos/demo${i + 1}.mp4`
 );
 
-/** Flat vertical tile: full-bleed video, heavy radius. */
+/** Vertical phone mockup: rounded frame, video fills (muted loop for hero marquee). */
 function HeroVideoTile({ src, label }: { src: string; label: string }) {
   return (
-    <div className="relative aspect-[9/16] w-[11.25rem] shrink-0 overflow-hidden rounded-[1.75rem] bg-zinc-950 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.75)] ring-1 ring-white/[0.06] sm:w-[12.75rem] sm:rounded-[2rem] md:w-[14rem] md:rounded-[2rem] lg:w-[15.25rem]">
+    <div className="relative aspect-[9/16] w-[10.5rem] shrink-0 overflow-hidden rounded-[1.65rem] bg-zinc-950 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.75)] ring-1 ring-inset ring-white/[0.08] sm:w-[11.75rem] sm:rounded-[1.85rem] md:w-[12.5rem] md:rounded-[2rem] lg:w-[13.25rem]">
       <video
         className="h-full w-full object-cover object-center"
         src={src}
@@ -504,11 +507,15 @@ const PRICING_INCLUDES =
   "Banner & fulltext overlays on every plan. Paid plans remove the watermark — Starter includes up to 5 custom hooks; Pro includes unlimited custom hooks.";
 
 function PricingSection() {
+  const proDisplay = planDefinition("pro");
+
   const tiers: {
     id: PricingTier;
     name: string;
     priceMain: string;
     priceSuffix: string | null;
+    priceCompareAt?: string;
+    pricePromoBadge?: string;
     popular: boolean;
     cta: string;
     bullets: ReactNode[];
@@ -540,8 +547,10 @@ function PricingSection() {
     {
       id: "pro",
       name: "Pro",
-      priceMain: "$49",
+      priceMain: "$39.99",
       priceSuffix: "/mo",
+      priceCompareAt: proDisplay.priceCompareAt,
+      pricePromoBadge: proDisplay.pricePromoBadge,
       popular: true,
       cta: "Go unlimited",
       bullets: [
@@ -621,34 +630,61 @@ function PricingSection() {
                 >
                   {plan.name}
                 </h3>
-                <p
-                  className={`mt-2 font-display text-3xl font-bold ${
-                    popular
-                      ? "text-[#F43F5E]"
-                      : free
-                        ? "text-zinc-300"
-                        : "text-white"
-                  }`}
-                  style={
-                    popular
-                      ? {
-                          textShadow:
-                            "0 0 28px rgba(244, 63, 94, 0.32), 0 0 64px rgba(244, 63, 94, 0.12)",
-                        }
-                      : undefined
-                  }
-                >
-                  {plan.priceMain}
-                  {plan.priceSuffix && (
-                    <span
-                      className={`text-base font-normal ${
-                        popular ? "text-[#F43F5E]/70" : "text-zinc-500"
-                      }`}
+                {plan.id === "pro" &&
+                plan.pricePromoBadge &&
+                plan.priceCompareAt ? (
+                  <div className="mt-3 space-y-2">
+                    <p className="text-[11px] font-bold uppercase tracking-[0.12em] text-[#F43F5E]">
+                      {plan.pricePromoBadge}
+                    </p>
+                    <p className="font-display text-sm font-medium text-zinc-500 line-through">
+                      {plan.priceCompareAt}
+                    </p>
+                    <p
+                      className="font-display text-4xl font-bold leading-none text-[#F43F5E] sm:text-[2.75rem]"
+                      style={{
+                        textShadow:
+                          "0 0 28px rgba(244, 63, 94, 0.32), 0 0 64px rgba(244, 63, 94, 0.12)",
+                      }}
                     >
-                      {plan.priceSuffix}
-                    </span>
-                  )}
-                </p>
+                      {plan.priceMain}
+                      {plan.priceSuffix && (
+                        <span className="text-xl font-bold text-[#F43F5E]/85 sm:text-2xl">
+                          {plan.priceSuffix}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                ) : (
+                  <p
+                    className={`mt-2 font-display text-3xl font-bold ${
+                      popular
+                        ? "text-[#F43F5E]"
+                        : free
+                          ? "text-zinc-300"
+                          : "text-white"
+                    }`}
+                    style={
+                      popular
+                        ? {
+                            textShadow:
+                              "0 0 28px rgba(244, 63, 94, 0.32), 0 0 64px rgba(244, 63, 94, 0.12)",
+                          }
+                        : undefined
+                    }
+                  >
+                    {plan.priceMain}
+                    {plan.priceSuffix && (
+                      <span
+                        className={`text-base font-normal ${
+                          popular ? "text-[#F43F5E]/70" : "text-zinc-500"
+                        }`}
+                      >
+                        {plan.priceSuffix}
+                      </span>
+                    )}
+                  </p>
+                )}
                 <ul
                   className={`mt-6 flex flex-1 flex-col gap-3 text-sm ${
                     free ? "text-zinc-500" : "text-zinc-400"
@@ -720,6 +756,7 @@ const faqs = [
     q: "Do I need an internet connection?",
     a: "Yes. The app needs internet to sign in and verify your subscription while you use it. Encoding still runs entirely on your computer — your source files are not uploaded for processing.",
   },
+  WINDOWS_SMARTSCREEN_FAQ,
   {
     q: "Will TikTok ban me?",
     a: "BofBot only adds overlays to videos you own. It doesn’t automate posting or violate platform rules — always follow TikTok Shop and community guidelines.",

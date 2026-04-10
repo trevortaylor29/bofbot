@@ -11,6 +11,8 @@ import { WelcomePage } from "./pages/WelcomePage";
 
 type Route = "welcome" | "login" | "home" | "batch" | "progress" | "settings";
 
+type UpdateOffer = { version: string; currentVersion: string };
+
 export default function App() {
   const [route, setRoute] = useState<Route>("welcome");
   const [booting, setBooting] = useState(true);
@@ -19,6 +21,9 @@ export default function App() {
   const [planError, setPlanError] = useState<string | null>(null);
   const [batchPayload, setBatchPayload] = useState<BatchPayload | null>(null);
   const [recentRefreshKey, setRecentRefreshKey] = useState(0);
+  const [updateOffer, setUpdateOffer] = useState<UpdateOffer | null>(null);
+  const [updateBusy, setUpdateBusy] = useState(false);
+  const [updateErr, setUpdateErr] = useState<string | null>(null);
 
   const loadPlan = useCallback(async () => {
     const r = await window.bofbot.getPlan();
@@ -65,6 +70,27 @@ export default function App() {
     }
   }, [route, userEmail, loadPlan]);
 
+  useEffect(() => {
+    const offAvail = window.bofbot.onUpdateAvailable((data) => {
+      if (!data?.version) return;
+      setUpdateOffer({
+        version: data.version,
+        currentVersion: data.currentVersion ?? "",
+      });
+      setUpdateErr(null);
+    });
+    const offErr = window.bofbot.onUpdateError((data) => {
+      if (data?.message) {
+        setUpdateErr(data.message);
+        setUpdateBusy(false);
+      }
+    });
+    return () => {
+      offAvail();
+      offErr();
+    };
+  }, []);
+
   async function handleLogout() {
     await window.bofbot.logout();
     setUserEmail(null);
@@ -91,6 +117,54 @@ export default function App() {
   return (
     <BrandedChrome>
       <div className="app-shell">
+        {updateOffer && (
+          <div className="update-banner" role="status" aria-live="polite">
+            <span className="update-banner__text">
+              A new version of BofBot is available. Update now?
+              {updateOffer.version ? (
+                <span className="visually-hidden">
+                  {" "}
+                  Version {updateOffer.version}
+                </span>
+              ) : null}
+            </span>
+            <div className="update-banner__actions">
+              <button
+                type="button"
+                className="btn-primary"
+                style={{ padding: "0.35rem 0.9rem", fontSize: "0.8125rem" }}
+                disabled={updateBusy}
+                onClick={async () => {
+                  setUpdateErr(null);
+                  setUpdateBusy(true);
+                  const r = await window.bofbot.downloadAppUpdate();
+                  if (!r.ok) {
+                    setUpdateBusy(false);
+                    setUpdateErr(r.error ?? "Update failed.");
+                  }
+                }}
+              >
+                {updateBusy ? "Updating…" : "Update"}
+              </button>
+              <button
+                type="button"
+                className="btn-ghost"
+                style={{ padding: "0.35rem 0.9rem", fontSize: "0.8125rem" }}
+                disabled={updateBusy}
+                onClick={() => {
+                  setUpdateOffer(null);
+                  setUpdateErr(null);
+                }}
+              >
+                Later
+              </button>
+            </div>
+            {updateErr ? (
+              <p className="update-banner__err">{updateErr}</p>
+            ) : null}
+          </div>
+        )}
+        <div className="app-shell-main">
         {route === "welcome" && (
           <WelcomePage onLogin={() => setRoute("login")} onCreateAccount={openSignup} />
         )}
@@ -147,6 +221,7 @@ export default function App() {
             onLogout={handleLogout}
           />
         )}
+        </div>
       </div>
     </BrandedChrome>
   );

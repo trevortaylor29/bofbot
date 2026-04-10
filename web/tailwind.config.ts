@@ -33,7 +33,8 @@ export default {
       },
       animation: {
         glow: "glow 4s ease-in-out infinite",
-        "hero-marquee": "hero-marquee 35s linear infinite",
+        // ~2× longer row than 5 demos → slower pass so speed feels similar with 11 clips
+        "hero-marquee": "hero-marquee 72s linear infinite",
       },
     },
   },

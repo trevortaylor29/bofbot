@@ -93,7 +93,21 @@ export default async function DashboardPage() {
           <p className="mt-2 font-display text-2xl font-semibold text-white">
             {def.name}
           </p>
-          <p className="mt-1 text-sm text-zinc-500">{def.priceLabel}</p>
+          {def.pricePromoBadge && def.priceCompareAt ? (
+            <div className="mt-3 space-y-1.5">
+              <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-[#F43F5E]">
+                {def.pricePromoBadge}
+              </p>
+              <p className="text-sm text-zinc-500 line-through">
+                {def.priceCompareAt}
+              </p>
+              <p className="font-display text-2xl font-bold text-white">
+                {def.priceLabel}
+              </p>
+            </div>
+          ) : (
+            <p className="mt-1 text-sm text-zinc-500">{def.priceLabel}</p>
+          )}
         </div>
 
         <div className="rounded-2xl border border-zinc-800 bg-zinc-950/60 p-6">

@@ -175,6 +175,51 @@ textarea {
   min-height: 0;
 }
 
+.app-shell-main {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Non-blocking auto-update prompt (electron-updater → GitHub Releases) */
+.update-banner {
+  flex-shrink: 0;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.65rem 1rem;
+  padding: 0.65rem 1rem;
+  border-bottom: 1px solid rgba(244, 63, 94, 0.22);
+  background: linear-gradient(
+    180deg,
+    rgba(244, 63, 94, 0.12) 0%,
+    rgba(24, 24, 27, 0.95) 100%
+  );
+  text-align: center;
+}
+
+.update-banner__text {
+  font-size: 0.875rem;
+  color: var(--text);
+  line-height: 1.4;
+}
+
+.update-banner__actions {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+}
+
+.update-banner__err {
+  width: 100%;
+  font-size: 0.75rem;
+  color: var(--coral);
+}
+
 .page-scroll {
   flex: 1;
   overflow: auto;

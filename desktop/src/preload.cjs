@@ -39,4 +39,17 @@ contextBridge.exposeInMainWorld("bofbot", {
     ipcRenderer.on(channel, listener);
     return () => ipcRenderer.removeListener(channel, listener);
   },
+  downloadAppUpdate: () => ipcRenderer.invoke("update:download"),
+  onUpdateAvailable: (fn) => {
+    const channel = "update-available";
+    const listener = (_e, data) => fn(data);
+    ipcRenderer.on(channel, listener);
+    return () => ipcRenderer.removeListener(channel, listener);
+  },
+  onUpdateError: (fn) => {
+    const channel = "update-error";
+    const listener = (_e, data) => fn(data);
+    ipcRenderer.on(channel, listener);
+    return () => ipcRenderer.removeListener(channel, listener);
+  },
 });

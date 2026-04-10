@@ -43,6 +43,11 @@ declare global {
       }>;
       onProgress: (fn: (ev: ProgressEvent) => void) => () => void;
       onPlanSnapshot: (fn: (data: { videosProcessedToday: number }) => void) => () => void;
+      downloadAppUpdate: () => Promise<{ ok: boolean; error?: string }>;
+      onUpdateAvailable: (
+        fn: (data: { version: string; currentVersion: string }) => void
+      ) => () => void;
+      onUpdateError: (fn: (data: { message: string }) => void) => () => void;
     };
   }
 }

@@ -9,6 +9,10 @@ export type PlanDefinition = {
   id: "free" | "starter" | "pro";
   name: string;
   priceLabel: string;
+  /** List / MSRP price for promos (shown struck through next to `priceLabel`). */
+  priceCompareAt?: string;
+  /** Short badge above price on marketing & dashboard (e.g. launch sale). */
+  pricePromoBadge?: string;
   /** Daily cap; `null` = unlimited */
   videosPerDay: number | null;
   /** Shown on free outputs; null = no watermark */
@@ -36,7 +40,9 @@ export const PLANS: PlanDefinition[] = [
   {
     id: "pro",
     name: "Pro",
-    priceLabel: "$49/mo",
+    priceLabel: "$39.99/mo",
+    priceCompareAt: "$69/mo",
+    pricePromoBadge: "LAUNCH SALE — 43% OFF",
     videosPerDay: null,
     watermark: null,
     priorityProcessing: true,

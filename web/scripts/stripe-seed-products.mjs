@@ -1,5 +1,6 @@
 /**
- * Creates BofBot Starter ($19/mo) and Pro ($49/mo) products + recurring prices in Stripe (test mode).
+ * Creates BofBot Starter ($19/mo) and Pro products + recurring prices in Stripe (test mode).
+ * Site copy may show promotional pricing; Stripe amount is whatever you set when seeding.
  *
  * Usage (from `web/`):
  *   STRIPE_SECRET_KEY=sk_test_... node scripts/stripe-seed-products.mjs

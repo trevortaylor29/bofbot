@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 
 import { BOFBOT_WINDOWS_INSTALLER_URL } from "@/lib/bofbot-desktop-installer";
+import { WINDOWS_SMARTSCREEN_FAQ } from "@/lib/windows-install-security-note";
 
 export function BillingPortalButton({
   hasStripeCustomer,
@@ -92,6 +93,15 @@ export function DownloadBofBotCta() {
       </a>
       <p className="mt-3 text-center text-sm text-zinc-400">
         Windows installer — run the setup, then sign in with this account.
+      </p>
+      <p className="mt-2 flex items-start justify-center gap-1.5 text-left text-xs leading-relaxed text-zinc-500">
+        <span
+          className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800/80 text-[10px] font-semibold text-zinc-400"
+          aria-hidden
+        >
+          i
+        </span>
+        <span>{WINDOWS_SMARTSCREEN_FAQ.a}</span>
       </p>
     </div>
   );

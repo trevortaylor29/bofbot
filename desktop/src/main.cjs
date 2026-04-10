@@ -32,7 +32,7 @@ const http = require("http");
 const treeKill = require("tree-kill");
 const { createAuthApi } = require("./main/auth-api.cjs");
 const { runBatch } = require("./main/process-batch.cjs");
-const { setupAutoUpdater } = require("./main/auto-updater.cjs");
+const { registerAutoUpdate } = require("./main/auto-updater.cjs");
 
 const WORKER_PORT = 8000;
 const WORKER_HEALTH_URL = `http://127.0.0.1:${WORKER_PORT}/health`;
@@ -577,6 +577,8 @@ function registerIpc({ ipcMain }) {
 
     return result;
   });
+
+  registerAutoUpdate({ ipcMain, getMainWindow: () => mainWindow });
 }
 
 function registerRendererCspMerge() {
@@ -602,7 +604,6 @@ async function bootstrap() {
   try {
     await startWorkerOnly();
     createWindow();
-    setupAutoUpdater(() => mainWindow);
   } catch (err) {
     console.error(err);
     await dialog.showErrorBox(
