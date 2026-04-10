@@ -4,6 +4,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@/auth";
 import { users } from "@/drizzle/schema";
 import { db } from "@/lib/db";
+import { rateLimit, utcUsageDayKey } from "@/lib/rate-limit";
+import { rateLimitResponse } from "@/lib/too-many-requests";
 import { dailyVideoLimit, type UserPlan } from "@/lib/plans";
 import {
   effectiveVideosProcessedToday,
@@ -42,6 +44,10 @@ export async function POST(request: Request) {
   }
 
   const userId = session.user.id;
+
+  const dayKey = utcUsageDayKey();
+  const rl = rateLimit(`inc:${userId}:${dayKey}`, 200, 24 * 60 * 60 * 1000);
+  if (!rl.ok) return rateLimitResponse(rl);
 
   try {
     const result = await db.transaction(async (tx) => {

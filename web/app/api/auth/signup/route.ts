@@ -5,8 +5,17 @@ import { NextResponse } from "next/server";
 import { users } from "@/drizzle/schema";
 import { isDbConnectionError } from "@/lib/db-errors";
 import { db } from "@/lib/db";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimitResponse } from "@/lib/too-many-requests";
+
+const WINDOW_MS = 60 * 60 * 1000;
+const MAX_PER_HOUR = 5;
 
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rl = rateLimit(`signup:${ip}`, MAX_PER_HOUR, WINDOW_MS);
+  if (!rl.ok) return rateLimitResponse(rl);
+
   let body: { email?: string; password?: string; name?: string };
   try {
     body = await request.json();
@@ -67,7 +76,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           error:
-            "Cannot reach the database. Set DATABASE_URL in .env.local (e.g. your Neon connection string) and run migrations.",
+            "Cannot reach the database. The service may be misconfigured or temporarily unavailable.",
           code: "DB_CONNECTION",
         },
         { status: 503 }

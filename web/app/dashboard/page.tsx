@@ -3,7 +3,7 @@ import Link from "next/link";
 
 import { auth } from "@/auth";
 import { users } from "@/drizzle/schema";
-import { db } from "@/lib/db";
+import { db, isDatabaseConfigured } from "@/lib/db";
 import { isDbConnectionError } from "@/lib/db-errors";
 import { dailyVideoLimit, planDefinition, type UserPlan } from "@/lib/plans";
 
@@ -20,9 +20,9 @@ export default async function DashboardPage() {
   let dbUnavailable: string | null = null;
   let userRow: typeof users.$inferSelect | null = null;
 
-  if (!process.env.DATABASE_URL?.trim()) {
+  if (!isDatabaseConfigured()) {
     dbUnavailable =
-      "DATABASE_URL is not set. Add your Neon (or Postgres) URL to .env.local.";
+      "The database is not configured on the server. Contact support if this persists.";
   } else if (!session?.user?.id) {
     dbUnavailable = "You must be signed in to view your account.";
   } else {
@@ -38,7 +38,7 @@ export default async function DashboardPage() {
       console.error("[dashboard] user query failed", e);
       if (isDbConnectionError(e)) {
         dbUnavailable =
-          "Cannot reach the database. Confirm DATABASE_URL in .env.local.";
+          "Cannot reach the database. The server logs may have more detail.";
       } else {
         dbUnavailable =
           "Could not load your account. Check the terminal for errors.";

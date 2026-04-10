@@ -1,10 +1,21 @@
-/** Logo tile — safe to import from server components. */
-export function BrandLogoMark({ className = "" }: { className?: string }) {
+import Image from "next/image";
+
+type Props = {
+  className?: string;
+};
+
+/** Logo from `/icon.png` — safe to import from server or client components. */
+export function BrandLogoMark({
+  className = "h-9 w-9 shrink-0 rounded-xl object-cover shadow-lg shadow-[#F43F5E]/30",
+}: Props) {
   return (
-    <div
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F43F5E] text-sm font-bold text-white shadow-lg shadow-[#F43F5E]/30 ${className}`}
-    >
-      B
-    </div>
+    <Image
+      src="/icon.png"
+      alt="BofBot"
+      width={36}
+      height={36}
+      className={className}
+      priority
+    />
   );
 }

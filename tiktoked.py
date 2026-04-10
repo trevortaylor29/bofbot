@@ -9,6 +9,7 @@ import logging
 import math
 import os
 import random
+import sys
 from functools import lru_cache
 import re
 import shutil
@@ -57,7 +58,47 @@ _EMOJI_RE = re.compile(
 
 
 def _root() -> Path:
+    """Repo / bundle root for config.json, fonts/, emoji/."""
+    env_root = os.environ.get("BOFBOT_ASSET_ROOT", "").strip()
+    if env_root:
+        return Path(env_root).expanduser().resolve()
+    if getattr(sys, "frozen", False):
+        return Path(sys._MEIPASS)
     return Path(__file__).resolve().parent
+
+
+def _ffmpeg_bundle_dir() -> Path | None:
+    raw = os.environ.get("BOFBOT_FFMPEG_DIR", "").strip()
+    if not raw:
+        return None
+    p = Path(raw).expanduser().resolve()
+    return p if p.is_dir() else None
+
+
+def _ffmpeg_executable() -> str:
+    d = _ffmpeg_bundle_dir()
+    if d is not None:
+        name = "ffmpeg.exe" if os.name == "nt" else "ffmpeg"
+        p = d / name
+        if p.is_file():
+            return str(p)
+    w = shutil.which("ffmpeg")
+    if w:
+        return w
+    raise FileNotFoundError("ffmpeg not found on PATH or BOFBOT_FFMPEG_DIR")
+
+
+def _ffprobe_executable() -> str:
+    d = _ffmpeg_bundle_dir()
+    if d is not None:
+        name = "ffprobe.exe" if os.name == "nt" else "ffprobe"
+        p = d / name
+        if p.is_file():
+            return str(p)
+    w = shutil.which("ffprobe")
+    if w:
+        return w
+    raise FileNotFoundError("ffprobe not found on PATH or BOFBOT_FFMPEG_DIR")
 
 
 def is_emoji_char(ch: str) -> bool:
@@ -81,6 +122,18 @@ def _emoji_dir() -> Path:
 def _emoji_assets_available() -> bool:
     d = _emoji_dir()
     return d.is_dir() and any(d.glob("*.png"))
+
+
+def _banner_line_has_png_emoji(text: str) -> bool:
+    """True if this line will composite Twemoji PNGs (taller ink than metrics alone)."""
+    if not _emoji_assets_available():
+        return False
+    for part, is_em in split_emoji_runs(text):
+        if not is_em or not part:
+            continue
+        if _emoji_segment_plan(part):
+            return True
+    return False
 
 
 def _emoji_segment_plan(part: str) -> list[Path]:
@@ -365,6 +418,25 @@ def _stroke_width_for_font_px(font_px: int) -> int:
     return max(4, min(13, max(5, font_px // 14)))
 
 
+def _hex_rgb(s: str) -> tuple[int, int, int] | None:
+    h = str(s).strip().lstrip("#")
+    if len(h) < 6:
+        return None
+    try:
+        return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+    except ValueError:
+        return None
+
+
+def _relative_luminance(rgb: tuple[int, int, int]) -> float:
+    def ch(c: int) -> float:
+        x = c / 255.0
+        return x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4
+
+    r, g, b = rgb
+    return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b)
+
+
 def _banner_stroke(fg: str, font_px: int) -> tuple[int, str]:
     """Black on light fills, white on dark; width matches fulltext."""
     s = str(fg).strip().lstrip("#")
@@ -378,6 +450,24 @@ def _banner_stroke(fg: str, font_px: int) -> tuple[int, str]:
     except ValueError:
         pass
     return _stroke_width_for_font_px(font_px), "#000000" if light else "#FFFFFF"
+
+
+def _shop_banner_stroke(bg: str, fg: str, font_px: int) -> tuple[int, str]:
+    """Match TikTok Shop stickers: thin black stroke on white/light type over colored bars;
+    no stroke on black type on white (or very light) bars. Other pairs fall back to _banner_stroke.
+    """
+    br = _hex_rgb(bg)
+    fr = _hex_rgb(fg)
+    if br and fr:
+        lb, lf = _relative_luminance(br), _relative_luminance(fr)
+        # Light text on a clearly darker background (red, orange, magenta, etc.)
+        if lf >= 0.72 and lb <= lf - 0.12:
+            thin = max(2, min(5, int(round(font_px * 0.0105))))
+            return thin, "#000000"
+        # Dark text on near-white / light chip
+        if lf <= 0.32 and lb >= 0.88:
+            return 0, "#000000"
+    return _banner_stroke(fg, font_px)
 
 
 def load_config(path: Path | None = None) -> dict[str, Any]:
@@ -439,6 +529,8 @@ def fit_banner_font(
     max_width: int,
     start: int,
     minimum: int,
+    bg: str,
+    fg: str,
 ) -> ImageFont.FreeTypeFont:
     size = start
     while size >= minimum:
@@ -450,7 +542,7 @@ def fit_banner_font(
             except OSError:
                 emo = None
         eh = _emoji_target_h(size)
-        sw_fit = _stroke_width_for_font_px(size)
+        sw_fit = _shop_banner_stroke(bg, fg, size)[0]
         if (
             mixed_text_length(
                 text,
@@ -465,6 +557,66 @@ def fit_banner_font(
             return fnt
         size -= 2
     return load_main_font(font_path, minimum)
+
+
+def _banner_line_fits_at_size(
+    text: str,
+    draw: ImageDraw.ImageDraw,
+    font_path: Path,
+    emoji_path: Path | None,
+    size: int,
+    max_width: int,
+    bg: str,
+    fg: str,
+) -> bool:
+    fnt = load_main_font(font_path, size)
+    emo: ImageFont.FreeTypeFont | None = None
+    if emoji_path and emoji_path.is_file():
+        try:
+            emo = ImageFont.truetype(str(emoji_path), size)
+        except OSError:
+            emo = None
+    eh = _emoji_target_h(size)
+    sw = _shop_banner_stroke(bg, fg, size)[0]
+    return (
+        mixed_text_length(
+            text,
+            draw,
+            fnt,
+            emo,
+            eh,
+            latin_stroke_width=sw,
+        )
+        <= max_width
+    )
+
+
+def fit_banner_line2_font_size(
+    line2: str,
+    draw: ImageDraw.ImageDraw,
+    font_path: Path,
+    emoji_path: Path | None,
+    max_width: int,
+    line1_font_px: int,
+    bg2: str,
+    fg2: str,
+    *,
+    ratio: float = 0.72,
+    abs_floor: int = 44,
+) -> int:
+    """Second chip: ~70–75% of line-1 size (TikTok primary + sub chip), still within max_width."""
+    target = int(round(line1_font_px * ratio))
+    target = max(abs_floor, min(line1_font_px, target))
+    if target % 2:
+        target -= 1
+    sz = target
+    while sz >= abs_floor:
+        if _banner_line_fits_at_size(
+            line2, draw, font_path, emoji_path, sz, max_width, bg2, fg2
+        ):
+            return sz
+        sz -= 2
+    return abs_floor
 
 
 def draw_rounded_banner_block(
@@ -483,25 +635,41 @@ def draw_rounded_banner_block(
     font_start: int,
     font_min: int,
     box_width: int | None = None,
+    forced_font_size: int | None = None,
 ) -> int:
-    fnt = fit_banner_font(
-        text, draw, font_path, emoji_path, max_text_width, font_start, font_min
-    )
+    if forced_font_size is not None:
+        fnt = load_main_font(font_path, forced_font_size)
+    else:
+        fnt = fit_banner_font(
+            text,
+            draw,
+            font_path,
+            emoji_path,
+            max_text_width,
+            font_start,
+            font_min,
+            bg,
+            fg,
+        )
     emoji_font: ImageFont.FreeTypeFont | None = None
     if emoji_path and emoji_path.is_file():
         try:
             emoji_font = ImageFont.truetype(str(emoji_path), fnt.size)
         except OSError:
             emoji_font = None
-    sw, sc = _banner_stroke(fg, fnt.size)
+    sw, sc = _shop_banner_stroke(bg, fg, fnt.size)
     eh = _emoji_target_h(fnt.size)
     ink_h = mixed_line_ink_height(
         text, draw, fnt, emoji_font, eh, latin_stroke_width=sw
     )
-    bbox_h = ink_h + pad_y * 2 + min(8, sw + 1)
+    # Extra vertical room so full-color emoji art (e.g. red heart) stays inside the bar
+    # and does not read as a “second banner” above the fill.
+    emoji_slop = 12 if _banner_line_has_png_emoji(text) else 0
+    bbox_h = ink_h + pad_y * 2 + min(8, sw + 1) + emoji_slop
     content_w = mixed_text_length(
         text, draw, fnt, emoji_font, eh, latin_stroke_width=sw
     )
+    # Width follows this line’s text + emoji only (no coupling to the other banner).
     need_w = int(math.ceil(content_w)) + pad_x * 2
     if box_width is not None:
         rect_w = max(box_width, need_w)
@@ -511,10 +679,12 @@ def draw_rounded_banner_block(
     x2 = cx + rect_w // 2
     y1 = y
     y2 = y + bbox_h
-    # Corners only (not pills): keep radius << half-height and modest vs width.
-    r_cap = min(radius, bbox_h // 5, rect_w // 20, 22)
-    r_use = max(8, r_cap)
-    draw.rounded_rectangle((x1, y1, x2, y2), radius=r_use, fill=bg)
+    # TikTok Shop stickers: modest rounding (~14–20px at 1080p), not full pills.
+    r_by_w = max(8, min(20, int(round(rect_w * 0.0155))))
+    r_by_h = max(8, min(20, max(10, bbox_h // 4)))
+    r_use = min(r_by_w, r_by_h, max(8, min(radius, 22)))
+    # Inset fill slightly so anti-aliased curve pixels stay opaque inside the bar (no video fringe).
+    draw.rounded_rectangle((x1, y1, x2, y2), radius=r_use, fill=bg, outline=bg, width=2)
     cy = (y1 + y2) / 2.0
     # Single-line banners: PNG emojis composited; Latin uses stroke outline.
     draw_text_mixed_centered(
@@ -546,21 +716,47 @@ def render_banner_overlay(
     line1 = prepare_text_for_render(str(preset["line1_text"]), cfg.get("_emoji_path"))
     line2 = prepare_text_for_render(str(preset["line2_text"]), cfg.get("_emoji_path"))
 
-    text_inset_x = 50
-    # Vertical cushion above/below text inside the colored bar.
-    pad_y_banner = 17
-    # Line 1 ~50–55% of frame width; line 2 ~40–45% (centered).
-    box_w1 = int(round(w * 0.54))
-    box_w2 = int(round(w * 0.44))
-    max_w1 = max(1, box_w1 - 2 * text_inset_x)
-    max_w2 = max(1, box_w2 - 2 * text_inset_x)
+    # Horizontal cap: more inset + slightly lower width fraction → bars sit farther from frame edges.
+    text_inset_x = 66
+    max_text_w = max(1, int(round(w * 0.82)) - 2 * text_inset_x)
+    # Top chip: taller bar + largest font that fits (not tied to line 2).
+    pad_y_line1 = 24
+    pad_y_line2 = 11
+    # Same proportion as before vs top inset (narrower together, equal scale).
+    text_inset_x_bottom = max(36, int(round(text_inset_x * 0.88)))
 
-    banner_top_nudge_px = 50
-    zone_top = int(h * 0.05) + jitter_y + banner_top_nudge_px
+    banner_top_nudge_px = 92
+    zone_top = int(h * 0.058) + jitter_y + banner_top_nudge_px
     cx = w // 2
 
     y = zone_top
     emo_p = cfg.get("_emoji_path")
+    bg1, fg1 = str(preset["line1_bg_color"]), str(preset["line1_text_color"])
+    bg2, fg2 = str(preset["line2_bg_color"]), str(preset["line2_text_color"])
+    line1_fnt = fit_banner_font(
+        line1,
+        draw,
+        font_main,
+        emo_p,
+        max_text_w,
+        352,
+        58,
+        bg1,
+        fg1,
+    )
+    line1_font_px = line1_fnt.size
+    line2_font_px = fit_banner_line2_font_size(
+        line2,
+        draw,
+        font_main,
+        emo_p,
+        max_text_w,
+        line1_font_px,
+        bg2,
+        fg2,
+        ratio=0.72,
+        abs_floor=44,
+    )
     y = draw_rounded_banner_block(
         draw,
         cx,
@@ -568,18 +764,20 @@ def render_banner_overlay(
         line1,
         font_main,
         emo_p,
-        str(preset["line1_bg_color"]),
-        str(preset["line1_text_color"]),
-        max_w1,
+        bg1,
+        fg1,
+        max_text_w,
         pad_x=text_inset_x,
-        pad_y=pad_y_banner,
-        radius=36,
-        font_start=302,
-        font_min=70,
-        box_width=box_w1,
+        pad_y=pad_y_line1,
+        radius=22,
+        font_start=352,
+        font_min=58,
+        box_width=None,
+        forced_font_size=line1_font_px,
     )
-    BANNER_LINE_GAP = 6
-    y += BANNER_LINE_GAP
+    # Pull the second bar up so it touches / covers anti-alias seam (no video showing through).
+    BANNER_STACK_OVERLAP_PX = 4
+    y = y - BANNER_STACK_OVERLAP_PX
     draw_rounded_banner_block(
         draw,
         cx,
@@ -587,15 +785,16 @@ def render_banner_overlay(
         line2,
         font_main,
         emo_p,
-        str(preset["line2_bg_color"]),
-        str(preset["line2_text_color"]),
-        max_w2,
-        pad_x=text_inset_x,
-        pad_y=pad_y_banner,
-        radius=36,
-        font_start=248,
-        font_min=56,
-        box_width=box_w2,
+        bg2,
+        fg2,
+        max_text_w,
+        pad_x=text_inset_x_bottom,
+        pad_y=pad_y_line2,
+        radius=22,
+        font_start=232,
+        font_min=44,
+        box_width=None,
+        forced_font_size=line2_font_px,
     )
     return img
 
@@ -841,11 +1040,13 @@ def enrich_config(cfg: dict[str, Any]) -> dict[str, Any]:
 
 
 def _video_has_audio(video_in: Path) -> bool:
-    if shutil.which("ffprobe") is None:
+    try:
+        ffprobe_bin = _ffprobe_executable()
+    except FileNotFoundError:
         return True
     r = subprocess.run(
         [
-            "ffprobe",
+            ffprobe_bin,
             "-v",
             "error",
             "-select_streams",
@@ -864,11 +1065,13 @@ def _video_has_audio(video_in: Path) -> bool:
 
 def ffprobe_video_stream_dimensions(video_in: Path) -> tuple[int, int] | None:
     """Pixel width × height of the first video stream, or None if ffprobe cannot read it."""
-    if shutil.which("ffprobe") is None:
+    try:
+        ffprobe_bin = _ffprobe_executable()
+    except FileNotFoundError:
         return None
     r = subprocess.run(
         [
-            "ffprobe",
+            ffprobe_bin,
             "-v",
             "error",
             "-select_streams",
@@ -910,8 +1113,7 @@ def ffmpeg_normalize_video(
     timeout_sec: float | None = None,
 ) -> None:
     """Scale video to fit inside width×height (preserve aspect), pad to exact frame size."""
-    if shutil.which("ffmpeg") is None:
-        raise FileNotFoundError("ffmpeg not found on PATH")
+    ffmpeg_bin = _ffmpeg_executable()
     dims = ffprobe_video_stream_dimensions(video_in)
     if dims is not None and dims[0] == width and dims[1] == height:
         log.info(
@@ -931,7 +1133,7 @@ def ffmpeg_normalize_video(
     )
     has_audio = _video_has_audio(video_in)
     cmd: list[str] = [
-        "ffmpeg",
+        ffmpeg_bin,
         "-y",
         "-hide_banner",
         "-loglevel",
@@ -986,13 +1188,12 @@ def ffmpeg_composite(
     *,
     timeout_sec: float | None = None,
 ) -> None:
-    if shutil.which("ffmpeg") is None:
-        raise FileNotFoundError("ffmpeg not found on PATH")
+    ffmpeg_bin = _ffmpeg_executable()
     # No scale2ref: overlay PNG is already config-sized (e.g. 1080x1920). Scaling was
     # shrinking the overlay to match smaller phone clips and made banners look tiny.
     filt = "[1:v]format=rgba[ov];[0:v][ov]overlay=0:0[outv]"
     cmd: list[str] = [
-        "ffmpeg",
+        ffmpeg_bin,
         "-y",
         "-hide_banner",
         "-loglevel",

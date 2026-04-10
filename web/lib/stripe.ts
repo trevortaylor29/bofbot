@@ -1,3 +1,5 @@
+import "server-only";
+
 import Stripe from "stripe";
 
 let stripeSingleton: Stripe | null = null;

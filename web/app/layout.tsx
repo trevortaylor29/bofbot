@@ -20,6 +20,10 @@ const jakarta = Plus_Jakarta_Sans({
 export const metadata: Metadata = {
   title: "BofBot",
   description: "BofBot — TikTok Shop-style text overlays on your product videos",
+  icons: {
+    icon: [{ url: "/icon.png", type: "image/png" }],
+    apple: "/icon.png",
+  },
 };
 
 export default function RootLayout({

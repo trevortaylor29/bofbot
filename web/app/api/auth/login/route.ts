@@ -1,11 +1,20 @@
 import { NextResponse } from "next/server";
 
 import { signIn } from "@/auth";
+import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import { rateLimitResponse } from "@/lib/too-many-requests";
+
+const WINDOW_MS = 60 * 60 * 1000;
+const MAX_PER_HOUR = 10;
 
 /**
  * JSON login for API clients. Browser flows can use signIn() from next-auth/react instead.
  */
 export async function POST(request: Request) {
+  const ip = getClientIp(request);
+  const rl = rateLimit(`login:${ip}`, MAX_PER_HOUR, WINDOW_MS);
+  if (!rl.ok) return rateLimitResponse(rl);
+
   let body: { email?: string; password?: string };
   try {
     body = await request.json();

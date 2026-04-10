@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useState, type ReactNode } from "react";
 
+import { BrandLogoMark } from "@/components/brand-mark";
 import {
   PricingCheckoutButton,
   PricingFreeCta,
@@ -29,16 +30,6 @@ const itemFade = {
   viewport: { once: true, margin: "-40px" },
   transition: { duration: 0.45, ease: easeOutExpo },
 };
-
-function LogoMark({ className = "" }: { className?: string }) {
-  return (
-    <div
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-[#F43F5E] text-sm font-bold text-white shadow-lg shadow-[#F43F5E]/30 ${className}`}
-    >
-      B
-    </div>
-  );
-}
 
 const TAGLINE = "Built for creators who post, not edit.";
 
@@ -74,7 +65,7 @@ function Nav() {
     <header className="fixed inset-x-0 top-0 z-50 border-b border-white/[0.06] bg-[#0a0a0a]/80 backdrop-blur-xl">
       <div className="mx-auto flex min-h-16 max-w-6xl items-center justify-between gap-4 px-5 py-2.5 sm:px-6">
         <a href="/" className="flex min-w-0 items-center gap-2.5">
-          <LogoMark className="shrink-0" />
+          <BrandLogoMark className="h-9 w-9 shrink-0 rounded-xl object-cover shadow-lg shadow-[#F43F5E]/30" />
           <div className="min-w-0">
             <div className="font-display text-lg font-semibold leading-tight tracking-tight text-white">
               BofBot
@@ -403,8 +394,8 @@ const features = [
     desc: "Multiple hook variants rotate across your batch for natural variety.",
   },
   {
-    title: "Works offline — runs on your PC",
-    desc: "Processing stays local. Your footage never leaves your machine.",
+    title: "Runs on your PC — your videos never leave your machine.",
+    desc: "Local desktop processing — encoding and overlays run on your hardware, not in the cloud.",
   },
   {
     title: "TikTok Shop optimized",
@@ -725,8 +716,8 @@ const faqs = [
     a: "The Free plan includes 3 videos per day so you can try the full pipeline before upgrading.",
   },
   {
-    q: "Do I need internet?",
-    a: "Video processing works offline once installed. You’ll need connectivity for account features and updates.",
+    q: "Do I need an internet connection?",
+    a: "Yes. The app needs internet to sign in and verify your subscription while you use it. Encoding still runs entirely on your computer — your source files are not uploaded for processing.",
   },
   {
     q: "Will TikTok ban me?",
@@ -809,7 +800,7 @@ function Footer() {
     <footer className="bg-[#0a0a0a] px-5 py-14 sm:px-6">
       <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-8 sm:flex-row">
         <div className="flex items-center gap-2.5">
-          <LogoMark className="h-8 w-8" />
+          <BrandLogoMark className="h-8 w-8 shrink-0 rounded-xl object-cover shadow-lg shadow-[#F43F5E]/30" />
           <span className="font-display text-lg font-semibold text-white">
             BofBot
           </span>
@@ -818,6 +809,12 @@ function Footer() {
           <a href="#pricing" className="hover:text-white">
             Pricing
           </a>
+          <Link href="/terms" className="hover:text-white">
+            Terms
+          </Link>
+          <Link href="/privacy" className="hover:text-white">
+            Privacy
+          </Link>
           {status === "authenticated" && session?.user ? (
             <Link href="/dashboard" className="hover:text-white">
               Dashboard

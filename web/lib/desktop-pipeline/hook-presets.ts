@@ -93,7 +93,7 @@ export const FULLTEXT_PRESETS: FulltextPreset[] = [
 
 export const BANNER_CUSTOM_PLACEHOLDER = `40% OFF | 4 HOURS LEFT
 TRIPLE DISCOUNT | ENDS TODAY
-LARGE SALE | 3 HOURS LEFT`;
+LARGE SALE | CHECK COUPONS`;
 
 export const FULLTEXT_CUSTOM_PLACEHOLDER = `TikTok bullied the price down and now this is on a massive sale
 If you waited until today you absolutely won because this is dirt cheap rn`;

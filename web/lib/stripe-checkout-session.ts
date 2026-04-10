@@ -1,3 +1,5 @@
+import "server-only";
+
 import { eq } from "drizzle-orm";
 import Stripe from "stripe";
 
@@ -46,7 +48,7 @@ export async function createStripeCheckoutUrlForUser(
     return {
       ok: false,
       status: 503,
-      error: `Invalid Stripe price for ${planRaw}. Set ${envVarName} to a valid price id. ${diagnostics}`,
+      error: "Checkout is not available. Please try again later.",
     };
   }
 
@@ -55,7 +57,7 @@ export async function createStripeCheckoutUrlForUser(
     return {
       ok: false,
       status: 503,
-      error: "STRIPE_SECRET_KEY is not set",
+      error: "Checkout is not available. Please try again later.",
     };
   }
 

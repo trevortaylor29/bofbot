@@ -2,13 +2,21 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { isCheckoutPaidPlan } from "@/lib/checkout-plans";
+import { rateLimit } from "@/lib/rate-limit";
 import { createStripeCheckoutUrlForUser } from "@/lib/stripe-checkout-session";
+import { rateLimitResponse } from "@/lib/too-many-requests";
+
+const WINDOW_MS = 60 * 60 * 1000;
+const MAX_PER_HOUR = 10;
 
 export async function POST(request: Request) {
   const session = await auth();
   if (!session?.user?.id || !session.user.email) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
+
+  const rl = rateLimit(`checkout:${session.user.id}`, MAX_PER_HOUR, WINDOW_MS);
+  if (!rl.ok) return rateLimitResponse(rl);
 
   let body: { plan?: string };
   try {

@@ -2,7 +2,12 @@ import { NextResponse } from "next/server";
 
 import { auth } from "@/auth";
 import { isCheckoutPaidPlan } from "@/lib/checkout-plans";
+import { rateLimit } from "@/lib/rate-limit";
 import { createStripeCheckoutUrlForUser } from "@/lib/stripe-checkout-session";
+import { rateLimitResponse } from "@/lib/too-many-requests";
+
+const WINDOW_MS = 60 * 60 * 1000;
+const MAX_PER_HOUR = 10;
 
 /**
  * Browser navigates here (top-level GET) so we return a 302 to Stripe.
@@ -22,6 +27,13 @@ export async function GET(request: Request) {
     const resume = new URL(request.url);
     login.searchParams.set("callbackUrl", `${resume.pathname}${resume.search}`);
     return NextResponse.redirect(login);
+  }
+
+  const rl = rateLimit(`checkout:${session.user.id}`, MAX_PER_HOUR, WINDOW_MS);
+  if (!rl.ok) {
+    return NextResponse.redirect(
+      new URL("/?checkout=rate_limited#pricing", request.url)
+    );
   }
 
   const result = await createStripeCheckoutUrlForUser(

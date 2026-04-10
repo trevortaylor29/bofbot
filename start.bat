@@ -23,7 +23,7 @@ if not exist "%MEDIA%\raw" mkdir "%MEDIA%\raw" 2>nul
 if not exist "%MEDIA%\out" mkdir "%MEDIA%\out" 2>nul
 
 echo Starting BofBot...
-echo   Worker:  http://127.0.0.1:8000  ^(binds 0.0.0.0:8000, media: %MEDIA%^)
+echo   Worker:  http://127.0.0.1:8000  ^(binds 127.0.0.1 only, media: %MEDIA%^)
 echo   Next.js: http://127.0.0.1:3000  (wait for "Ready" in that window)
 echo.
 
@@ -58,7 +58,7 @@ if errorlevel 1 (
   exit /b 1
 )
 echo.
-python -m uvicorn worker.app:app --host 0.0.0.0 --port 8000
+python -m uvicorn worker.app:app --host 127.0.0.1 --port 8000
 echo.
 echo Worker exited. 
 pause
