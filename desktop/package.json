@@ -5,7 +5,7 @@
   "description": "BofBot desktop — local UI + Python worker; auth/plan via production API (see src/config.ts)",
   "repository": {
     "type": "git",
-    "url": "https://github.com/bofbot/tiktoked.git"
+    "url": "https://github.com/trevortaylor29/bofbot.git"
   },
   "main": "src/main.cjs",
   "scripts": {
@@ -80,8 +80,8 @@
     },
     "publish": {
       "provider": "github",
-      "owner": "bofbot",
-      "repo": "tiktoked",
+      "owner": "trevortaylor29",
+      "repo": "bofbot",
       "releaseType": "release"
     }
   },
