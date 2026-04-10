@@ -52,4 +52,10 @@ contextBridge.exposeInMainWorld("bofbot", {
     ipcRenderer.on(channel, listener);
     return () => ipcRenderer.removeListener(channel, listener);
   },
+  onUpdateDownloadProgress: (fn) => {
+    const channel = "update-download-progress";
+    const listener = (_e, data) => fn(data);
+    ipcRenderer.on(channel, listener);
+    return () => ipcRenderer.removeListener(channel, listener);
+  },
 });

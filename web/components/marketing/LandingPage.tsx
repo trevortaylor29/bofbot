@@ -136,30 +136,46 @@ function Nav() {
 const HERO_DEMO_COUNT = 11;
 const HERO_OUTPUT_VIDEOS = Array.from(
   { length: HERO_DEMO_COUNT },
-  (_, i) => `/videos/demo${i + 1}.mp4`
+  (_, i) => {
+    const n = i + 1;
+    return {
+      src: `/videos/demo${n}.mp4`,
+      poster: `/videos/demo${n}.jpg`,
+    };
+  }
 );
 
 /** Vertical phone mockup: rounded frame, video fills (muted loop for hero marquee). */
-function HeroVideoTile({ src, label }: { src: string; label: string }) {
+function HeroVideoTile({
+  src,
+  poster,
+  label,
+}: {
+  src: string;
+  poster: string;
+  label: string;
+}) {
   return (
     <div className="relative aspect-[9/16] w-[10.5rem] shrink-0 overflow-hidden rounded-[1.65rem] bg-zinc-950 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.75)] ring-1 ring-inset ring-white/[0.08] sm:w-[11.75rem] sm:rounded-[1.85rem] md:w-[12.5rem] md:rounded-[2rem] lg:w-[13.25rem]">
       <video
-        className="h-full w-full object-cover object-center"
-        src={src}
         autoPlay
         muted
         loop
         playsInline
+        className="h-full w-full object-cover object-center"
+        src={src}
+        poster={poster}
         preload="metadata"
         aria-label={label}
+        {...({ "webkit-playsinline": "" } as Record<string, string>)}
       />
     </div>
   );
 }
 
 function HeroCarousel() {
-  const items = HERO_OUTPUT_VIDEOS.map((src, i) => ({
-    src,
+  const items = HERO_OUTPUT_VIDEOS.map((v, i) => ({
+    ...v,
     label: `Sample BofBot output video ${i + 1} of ${HERO_OUTPUT_VIDEOS.length}`,
   }));
   const loop = [...items, ...items];
@@ -173,6 +189,7 @@ function HeroCarousel() {
             <HeroVideoTile
               key={`${item.src}-${i}`}
               src={item.src}
+              poster={item.poster}
               label={item.label}
             />
           ))}

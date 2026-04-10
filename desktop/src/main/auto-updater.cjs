@@ -8,6 +8,40 @@ const { autoUpdater } = require("electron-updater");
 const GITHUB_OWNER = "trevortaylor29";
 const GITHUB_REPO = "bofbot";
 
+function stripHtml(raw) {
+  let s = String(raw)
+    .replace(/<script[\s\S]*?<\/script>/gi, " ")
+    .replace(/<style[\s\S]*?<\/style>/gi, " ")
+    .replace(/<[^>]+>/g, " ");
+  s = s
+    .replace(/&nbsp;/gi, " ")
+    .replace(/&amp;/gi, "&")
+    .replace(/&lt;/gi, "<")
+    .replace(/&gt;/gi, ">")
+    .replace(/&quot;/gi, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&#x27;/gi, "'");
+  return s.replace(/[ \t]+\n/g, "\n").replace(/\n{3,}/g, "\n\n").replace(/[ \t]{2,}/g, " ").trim();
+}
+
+/** Plain text for in-app UI (never pass raw GitHub HTML to a native dialog). */
+function formatReleaseNotesPlain(info) {
+  const raw = info.releaseNotes;
+  if (raw == null || raw === "") return null;
+  if (Array.isArray(raw)) {
+    const parts = [];
+    for (const item of raw) {
+      if (!item?.note) continue;
+      const note = stripHtml(String(item.note));
+      if (note) parts.push(`${item.version}: ${note}`);
+    }
+    const joined = parts.join("\n\n");
+    return joined.length ? joined : null;
+  }
+  const s = stripHtml(String(raw));
+  return s.length ? s : null;
+}
+
 /**
  * @param {object} opts
  * @param {import("electron").IpcMain} opts.ipcMain
@@ -45,7 +79,15 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
     repo: GITHUB_REPO,
   });
   autoUpdater.autoDownload = false;
-  autoUpdater.autoInstallOnAppQuit = true;
+  autoUpdater.autoInstallOnAppQuit = false;
+  autoUpdater.autoRunAppAfterInstall = true;
+
+  function sendProgress(payload) {
+    const win = getMainWindow();
+    if (win?.webContents && !win.isDestroyed()) {
+      win.webContents.send("update-download-progress", payload);
+    }
+  }
 
   autoUpdater.on("update-available", (info) => {
     const win = getMainWindow();
@@ -53,15 +95,24 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
       win.webContents.send("update-available", {
         version: info.version,
         currentVersion: app.getVersion(),
+        releaseNotes: formatReleaseNotesPlain(info),
       });
     }
+  });
+
+  autoUpdater.on("download-progress", (p) => {
+    sendProgress({
+      percent: typeof p.percent === "number" ? p.percent : 0,
+      transferred: p.transferred,
+      total: p.total,
+    });
   });
 
   autoUpdater.on("update-downloaded", () => {
     if (userRequestedInstall) {
       setImmediate(() => {
         try {
-          autoUpdater.quitAndInstall(false, true);
+          autoUpdater.quitAndInstall(true, true);
         } catch (e) {
           console.error("[desktop] quitAndInstall failed:", e);
         }

@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { BrandedChrome } from "./components/BrandedChrome";
+import { UpdateAvailableBadge } from "./components/UpdateAvailableBadge";
+import { UpdateModal } from "./components/UpdateModal";
 import type { BatchPayload, PlanPayload } from "./types";
 import { BatchPage } from "./pages/BatchPage";
 import { LoginPage } from "./pages/LoginPage";
@@ -11,7 +13,11 @@ import { WelcomePage } from "./pages/WelcomePage";
 
 type Route = "welcome" | "login" | "home" | "batch" | "progress" | "settings";
 
-type UpdateOffer = { version: string; currentVersion: string };
+type UpdateOffer = {
+  version: string;
+  currentVersion: string;
+  releaseNotes: string | null;
+};
 
 export default function App() {
   const [route, setRoute] = useState<Route>("welcome");
@@ -21,9 +27,13 @@ export default function App() {
   const [planError, setPlanError] = useState<string | null>(null);
   const [batchPayload, setBatchPayload] = useState<BatchPayload | null>(null);
   const [recentRefreshKey, setRecentRefreshKey] = useState(0);
-  const [updateOffer, setUpdateOffer] = useState<UpdateOffer | null>(null);
+  const [updatePending, setUpdatePending] = useState<UpdateOffer | null>(null);
+  const [updateModalOpen, setUpdateModalOpen] = useState(false);
   const [updateBusy, setUpdateBusy] = useState(false);
   const [updateErr, setUpdateErr] = useState<string | null>(null);
+  const [updateProgressPercent, setUpdateProgressPercent] = useState<number | null>(
+    null
+  );
 
   const loadPlan = useCallback(async () => {
     const r = await window.bofbot.getPlan();
@@ -73,21 +83,32 @@ export default function App() {
   useEffect(() => {
     const offAvail = window.bofbot.onUpdateAvailable((data) => {
       if (!data?.version) return;
-      setUpdateOffer({
+      const rn =
+        typeof data.releaseNotes === "string" ? data.releaseNotes.trim() : "";
+      setUpdatePending({
         version: data.version,
         currentVersion: data.currentVersion ?? "",
+        releaseNotes: rn.length > 0 ? rn : null,
       });
+      setUpdateModalOpen(true);
       setUpdateErr(null);
     });
     const offErr = window.bofbot.onUpdateError((data) => {
       if (data?.message) {
         setUpdateErr(data.message);
         setUpdateBusy(false);
+        setUpdateProgressPercent(null);
+      }
+    });
+    const offProgress = window.bofbot.onUpdateDownloadProgress((data) => {
+      if (typeof data?.percent === "number") {
+        setUpdateProgressPercent(data.percent);
       }
     });
     return () => {
       offAvail();
       offErr();
+      offProgress();
     };
   }, []);
 
@@ -114,56 +135,41 @@ export default function App() {
     );
   }
 
+  const showUpdateBadge =
+    updatePending != null && !updateModalOpen && !updateBusy;
+
   return (
     <BrandedChrome>
       <div className="app-shell">
-        {updateOffer && (
-          <div className="update-banner" role="status" aria-live="polite">
-            <span className="update-banner__text">
-              A new version of BofBot is available. Update now?
-              {updateOffer.version ? (
-                <span className="visually-hidden">
-                  {" "}
-                  Version {updateOffer.version}
-                </span>
-              ) : null}
-            </span>
-            <div className="update-banner__actions">
-              <button
-                type="button"
-                className="btn-primary"
-                style={{ padding: "0.35rem 0.9rem", fontSize: "0.8125rem" }}
-                disabled={updateBusy}
-                onClick={async () => {
-                  setUpdateErr(null);
-                  setUpdateBusy(true);
-                  const r = await window.bofbot.downloadAppUpdate();
-                  if (!r.ok) {
-                    setUpdateBusy(false);
-                    setUpdateErr(r.error ?? "Update failed.");
-                  }
-                }}
-              >
-                {updateBusy ? "Updating…" : "Update"}
-              </button>
-              <button
-                type="button"
-                className="btn-ghost"
-                style={{ padding: "0.35rem 0.9rem", fontSize: "0.8125rem" }}
-                disabled={updateBusy}
-                onClick={() => {
-                  setUpdateOffer(null);
-                  setUpdateErr(null);
-                }}
-              >
-                Later
-              </button>
-            </div>
-            {updateErr ? (
-              <p className="update-banner__err">{updateErr}</p>
-            ) : null}
-          </div>
-        )}
+        {showUpdateBadge ? (
+          <UpdateAvailableBadge onClick={() => setUpdateModalOpen(true)} />
+        ) : null}
+        {updateModalOpen && updatePending ? (
+          <UpdateModal
+            newVersion={updatePending.version}
+            currentVersion={updatePending.currentVersion}
+            releaseNotes={updatePending.releaseNotes}
+            busy={updateBusy}
+            progressPercent={updateProgressPercent}
+            error={updateErr}
+            onUpdate={async () => {
+              setUpdateErr(null);
+              setUpdateBusy(true);
+              setUpdateProgressPercent(0);
+              const r = await window.bofbot.downloadAppUpdate();
+              if (!r.ok) {
+                setUpdateBusy(false);
+                setUpdateProgressPercent(null);
+                setUpdateErr(r.error ?? "Update failed.");
+              }
+            }}
+            onNotNow={() => {
+              setUpdateModalOpen(false);
+              setUpdateErr(null);
+              setUpdateProgressPercent(null);
+            }}
+          />
+        ) : null}
         <div className="app-shell-main">
         {route === "welcome" && (
           <WelcomePage onLogin={() => setRoute("login")} onCreateAccount={openSignup} />

@@ -45,9 +45,20 @@ declare global {
       onPlanSnapshot: (fn: (data: { videosProcessedToday: number }) => void) => () => void;
       downloadAppUpdate: () => Promise<{ ok: boolean; error?: string }>;
       onUpdateAvailable: (
-        fn: (data: { version: string; currentVersion: string }) => void
+        fn: (data: {
+          version: string;
+          currentVersion: string;
+          releaseNotes?: string | null;
+        }) => void
       ) => () => void;
       onUpdateError: (fn: (data: { message: string }) => void) => () => void;
+      onUpdateDownloadProgress: (
+        fn: (data: {
+          percent: number;
+          transferred?: number;
+          total?: number;
+        }) => void
+      ) => () => void;
     };
   }
 }

@@ -14,7 +14,8 @@
     "db:migrate": "drizzle-kit migrate",
     "db:push": "drizzle-kit push",
     "db:studio": "drizzle-kit studio",
-    "stripe:seed": "node scripts/stripe-seed-products.mjs"
+    "stripe:seed": "node scripts/stripe-seed-products.mjs",
+    "hero:posters": "node scripts/extract-hero-video-posters.mjs"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",

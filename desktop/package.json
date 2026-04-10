@@ -1,6 +1,6 @@
 {
   "name": "bofbot-desktop",
-  "version": "0.1.0",
+  "version": "0.2.1",
   "private": true,
   "description": "BofBot desktop — local UI + Python worker; auth/plan via production API (see src/config.ts)",
   "repository": {
@@ -15,6 +15,7 @@
     "build:renderer": "vite build",
     "build:pipeline": "node scripts/prepare-pipeline.cjs",
     "build:win": "npm run build:renderer && npm run build:pipeline && electron-builder --win",
+    "build:win:release": "npm run build:renderer && npm run build:pipeline && electron-builder --win --publish never",
     "start": "electron ."
   },
   "build": {
