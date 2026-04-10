@@ -10,6 +10,7 @@ import {
   PricingCheckoutButton,
   PricingFreeCta,
 } from "@/components/marketing/PricingCheckoutButton";
+import { BOFBOT_WINDOWS_INSTALLER_URL } from "@/lib/bofbot-desktop-installer";
 
 /** SVG fractal noise tile (encoded for data URL). */
 const NOISE_DATA_URI =
@@ -118,7 +119,7 @@ function Nav() {
             </Link>
           )}
           <a
-            href="#"
+            href={BOFBOT_WINDOWS_INSTALLER_URL}
             className="shrink-0 rounded-full bg-[#F43F5E] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#F43F5E]/30 ring-1 ring-white/10 transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(244,63,94,0.4)]"
           >
             Download
@@ -257,7 +258,7 @@ function HeroSection() {
           transition={{ ...fadeUp.transition, delay: 0.15 }}
         >
           <a
-            href="#"
+            href={BOFBOT_WINDOWS_INSTALLER_URL}
             className="inline-flex items-center justify-center rounded-full bg-[#F43F5E] px-10 py-4 text-base font-semibold text-white shadow-[0_0_48px_-6px_rgba(244,63,94,0.35)] ring-1 ring-white/10 transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(244,63,94,0.4)]"
           >
             Download BofBot
@@ -829,7 +830,10 @@ function Footer() {
               </Link>
             </>
           )}
-          <a href="#" className="hover:text-white">
+          <a
+            href={BOFBOT_WINDOWS_INSTALLER_URL}
+            className="hover:text-white"
+          >
             Download
           </a>
         </nav>
