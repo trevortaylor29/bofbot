@@ -1,6 +1,7 @@
 /**
  * GitHub Releases auto-update (electron-updater).
- * Non-blocking UI: main sends `update-available` to renderer; user chooses Update → silent download → quitAndInstall.
+ * Renderer modal → download → quitAndInstall(true, true): NSIS /S + --force-run (no installer window, relaunch app).
+ * Silent updates require a oneClick NSIS build (see package.json build.nsis).
  */
 const { app } = require("electron");
 const { autoUpdater } = require("electron-updater");
@@ -69,6 +70,26 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
     }
   });
 
+  ipcMain.handle("update:check", async () => {
+    if (!app.isPackaged) {
+      return { ok: true, devMode: true, updateAvailable: false };
+    }
+    try {
+      const result = await autoUpdater.checkForUpdates();
+      if (result == null) {
+        return { ok: true, updateAvailable: false };
+      }
+      return {
+        ok: true,
+        updateAvailable: result.isUpdateAvailable === true,
+        remoteVersion: result.updateInfo?.version,
+      };
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e);
+      return { ok: false, error: msg };
+    }
+  });
+
   if (!app.isPackaged) {
     return;
   }
@@ -112,6 +133,7 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
     if (userRequestedInstall) {
       setImmediate(() => {
         try {
+          // true = silent (/S), true = relaunch after install (--force-run)
           autoUpdater.quitAndInstall(true, true);
         } catch (e) {
           console.error("[desktop] quitAndInstall failed:", e);

@@ -40,6 +40,7 @@ contextBridge.exposeInMainWorld("bofbot", {
     return () => ipcRenderer.removeListener(channel, listener);
   },
   downloadAppUpdate: () => ipcRenderer.invoke("update:download"),
+  checkForUpdates: () => ipcRenderer.invoke("update:check"),
   onUpdateAvailable: (fn) => {
     const channel = "update-available";
     const listener = (_e, data) => fn(data);

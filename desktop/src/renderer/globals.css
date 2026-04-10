@@ -1445,3 +1445,21 @@ label.form-label,
   position: relative;
   z-index: 1;
 }
+
+@keyframes bofbot-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.settings-check-spinner {
+  display: inline-block;
+  width: 1rem;
+  height: 1rem;
+  flex-shrink: 0;
+  border: 2px solid rgba(255, 255, 255, 0.18);
+  border-top-color: var(--coral);
+  border-radius: 50%;
+  animation: bofbot-spin 0.65s linear infinite;
+  vertical-align: middle;
+}

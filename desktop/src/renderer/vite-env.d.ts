@@ -44,6 +44,15 @@ declare global {
       onProgress: (fn: (ev: ProgressEvent) => void) => () => void;
       onPlanSnapshot: (fn: (data: { videosProcessedToday: number }) => void) => () => void;
       downloadAppUpdate: () => Promise<{ ok: boolean; error?: string }>;
+      checkForUpdates: () => Promise<
+        | {
+            ok: true;
+            updateAvailable: boolean;
+            remoteVersion?: string;
+            devMode?: boolean;
+          }
+        | { ok: false; error: string }
+      >;
       onUpdateAvailable: (
         fn: (data: {
           version: string;
