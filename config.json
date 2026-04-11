@@ -1,7 +1,7 @@
 {
   "video_width": 1080,
   "video_height": 1920,
-  "font_path": "fonts/TikTokSans-VariableFont_opsz,slnt,wdth,wght.ttf",
+  "font_path": "fonts/TikTokSans-Bold.ttf",
   "emoji_font_path": "fonts/NotoColorEmoji.ttf",
   "presets": [
     {

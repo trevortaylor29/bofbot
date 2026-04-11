@@ -49,3 +49,8 @@ Thumbs.db
 
 # --- Logs ---
 *.log
+
+# Local tiktoked composite smoke test output
+/_test_banner_overlay.mp4
+/_scale2ref_test.mp4
+/_montserrat_flush.mp4

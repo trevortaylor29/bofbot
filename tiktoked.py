@@ -37,6 +37,12 @@ logging.basicConfig(
 )
 log = logging.getLogger("bofbot")
 
+# Top banner chip (line 1): max pixel size before fit_banner_font scales down. ~22% below legacy 352/58 for a closer TikTok-native scale.
+BANNER_LINE1_FONT_START_PX = 274
+BANNER_LINE1_FONT_MIN_PX = 44
+# Line-2 chip cap (legacy 232px at 352px line-1 cap), scaled to match line-1 start.
+BANNER_LINE2_FONT_START_PX = int(round(232 * BANNER_LINE1_FONT_START_PX / 352))
+
 # Broad emoji / pictograph removal when no emoji font is available
 _EMOJI_RE = re.compile(
     "["
@@ -414,60 +420,13 @@ def _resolve_emoji_font(cfg: dict[str, Any]) -> Path | None:
 
 
 def _stroke_width_for_font_px(font_px: int) -> int:
-    """Shared outline thickness for banner + fulltext."""
+    """Outline thickness for fulltext blocks (banners use no Latin stroke)."""
     return max(4, min(13, max(5, font_px // 14)))
 
 
-def _hex_rgb(s: str) -> tuple[int, int, int] | None:
-    h = str(s).strip().lstrip("#")
-    if len(h) < 6:
-        return None
-    try:
-        return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
-    except ValueError:
-        return None
-
-
-def _relative_luminance(rgb: tuple[int, int, int]) -> float:
-    def ch(c: int) -> float:
-        x = c / 255.0
-        return x / 12.92 if x <= 0.03928 else ((x + 0.055) / 1.055) ** 2.4
-
-    r, g, b = rgb
-    return 0.2126 * ch(r) + 0.7152 * ch(g) + 0.0722 * ch(b)
-
-
-def _banner_stroke(fg: str, font_px: int) -> tuple[int, str]:
-    """Black on light fills, white on dark; width matches fulltext."""
-    s = str(fg).strip().lstrip("#")
-    light = True
-    try:
-        if len(s) >= 6:
-            r = int(s[0:2], 16)
-            g = int(s[2:4], 16)
-            b = int(s[4:6], 16)
-            light = (r + g + b) / 3 >= 145
-    except ValueError:
-        pass
-    return _stroke_width_for_font_px(font_px), "#000000" if light else "#FFFFFF"
-
-
-def _shop_banner_stroke(bg: str, fg: str, font_px: int) -> tuple[int, str]:
-    """Match TikTok Shop stickers: thin black stroke on white/light type over colored bars;
-    no stroke on black type on white (or very light) bars. Other pairs fall back to _banner_stroke.
-    """
-    br = _hex_rgb(bg)
-    fr = _hex_rgb(fg)
-    if br and fr:
-        lb, lf = _relative_luminance(br), _relative_luminance(fr)
-        # Light text on a clearly darker background (red, orange, magenta, etc.)
-        if lf >= 0.72 and lb <= lf - 0.12:
-            thin = max(2, min(5, int(round(font_px * 0.0105))))
-            return thin, "#000000"
-        # Dark text on near-white / light chip
-        if lf <= 0.32 and lb >= 0.88:
-            return 0, "#000000"
-    return _banner_stroke(fg, font_px)
+def _shop_banner_stroke(_bg: str, _fg: str, _font_px: int) -> tuple[int, str]:
+    """Banner chip Latin: no outline (fulltext overlay still uses _stroke_width_for_font_px)."""
+    return 0, "#000000"
 
 
 def load_config(path: Path | None = None) -> dict[str, Any]:
@@ -498,22 +457,41 @@ def load_main_font(path: Path, size: int) -> ImageFont.FreeTypeFont:
         return fnt
     if not axes_info or not isinstance(axes_info, list):
         return fnt
+    # TikTok Sans variable file only (static TikTokSans-*.ttf has no axes).
+    tiktok_vf = "tiktok" in path.name.lower() and "variablefont" in path.name.lower()
     vals: list[float] = []
     for ax in axes_info:
         mn = float(ax["minimum"])
         d = float(ax["default"])
         mx = float(ax["maximum"])
         name = (ax.get("name") or b"").decode("utf-8", errors="ignore").lower()
-        if "weight" in name:
-            vals.append(min(900.0, mx))
-        elif "optical" in name:
-            vals.append(max(mn, min(mx, float(size) * 0.11)))
-        elif "width" in name:
-            vals.append(d)
-        elif "slant" in name:
-            vals.append(d)
+        raw_tag = ax.get("tag")
+        if isinstance(raw_tag, bytes):
+            tag = raw_tag.decode("ascii", errors="ignore").lower()
         else:
-            vals.append(d)
+            tag = str(raw_tag or "").lower()
+        if tiktok_vf:
+            if "weight" in name or tag == "wght":
+                vals.append(max(mn, min(400.0, mx)))
+            elif "slant" in name or tag == "slnt":
+                vals.append(max(mn, min(0.0, mx)))
+            elif "width" in name or tag == "wdth":
+                vals.append(max(mn, min(100.0, mx)))
+            elif "optical" in name or tag == "opsz":
+                vals.append(d)
+            else:
+                vals.append(d)
+        else:
+            if "weight" in name or tag == "wght":
+                vals.append(max(mn, min(700.0, mx)))
+            elif "optical" in name or tag == "opsz":
+                vals.append(max(mn, min(mx, float(size) * 0.11)))
+            elif "width" in name or tag == "wdth":
+                vals.append(d)
+            elif "slant" in name or tag == "slnt":
+                vals.append(d)
+            else:
+                vals.append(d)
     try:
         fnt.set_variation_by_axes(vals)
     except (OSError, ValueError, TypeError):
@@ -664,7 +642,7 @@ def draw_rounded_banner_block(
     )
     # Extra vertical room so full-color emoji art (e.g. red heart) stays inside the bar
     # and does not read as a “second banner” above the fill.
-    emoji_slop = 12 if _banner_line_has_png_emoji(text) else 0
+    emoji_slop = 10 if _banner_line_has_png_emoji(text) else 0
     bbox_h = ink_h + pad_y * 2 + min(8, sw + 1) + emoji_slop
     content_w = mixed_text_length(
         text, draw, fnt, emoji_font, eh, latin_stroke_width=sw
@@ -679,14 +657,14 @@ def draw_rounded_banner_block(
     x2 = cx + rect_w // 2
     y1 = y
     y2 = y + bbox_h
-    # TikTok Shop stickers: modest rounding (~14–20px at 1080p), not full pills.
-    r_by_w = max(8, min(20, int(round(rect_w * 0.0155))))
-    r_by_h = max(8, min(20, max(10, bbox_h // 4)))
-    r_use = min(r_by_w, r_by_h, max(8, min(radius, 22)))
+    # TikTok Shop stickers: modest rounding (~14–22px at 1080p), not full pills.
+    r_by_w = max(8, min(22, int(round(rect_w * 0.0165))))
+    r_by_h = max(8, min(22, max(10, bbox_h // 4)))
+    r_use = min(r_by_w, r_by_h, max(8, min(radius, 25)))
     # Inset fill slightly so anti-aliased curve pixels stay opaque inside the bar (no video fringe).
     draw.rounded_rectangle((x1, y1, x2, y2), radius=r_use, fill=bg, outline=bg, width=2)
     cy = (y1 + y2) / 2.0
-    # Single-line banners: PNG emojis composited; Latin uses stroke outline.
+    # Single-line banners: PNG emojis composited; Latin has no stroke (fulltext does).
     draw_text_mixed_centered(
         draw,
         float(cx),
@@ -716,14 +694,14 @@ def render_banner_overlay(
     line1 = prepare_text_for_render(str(preset["line1_text"]), cfg.get("_emoji_path"))
     line2 = prepare_text_for_render(str(preset["line2_text"]), cfg.get("_emoji_path"))
 
-    # Horizontal cap: more inset + slightly lower width fraction → bars sit farther from frame edges.
-    text_inset_x = 66
-    max_text_w = max(1, int(round(w * 0.82)) - 2 * text_inset_x)
+    # Left/right padding inside each chip (vertical uses pad_y_* only).
+    banner_pad_x = 34
+    # Max glyph span for fitting: ~82% frame minus chip padding on both sides.
+    max_text_w = max(1, int(round(w * 0.82)) - 2 * banner_pad_x)
     # Top chip: taller bar + largest font that fits (not tied to line 2).
-    pad_y_line1 = 24
-    pad_y_line2 = 11
-    # Same proportion as before vs top inset (narrower together, equal scale).
-    text_inset_x_bottom = max(36, int(round(text_inset_x * 0.88)))
+    pad_y_line1 = 19
+    pad_y_line2 = 9
+    banner_pad_x_line2 = max(22, int(round(banner_pad_x * 0.88)))
 
     banner_top_nudge_px = 92
     zone_top = int(h * 0.058) + jitter_y + banner_top_nudge_px
@@ -739,8 +717,8 @@ def render_banner_overlay(
         font_main,
         emo_p,
         max_text_w,
-        352,
-        58,
+        BANNER_LINE1_FONT_START_PX,
+        BANNER_LINE1_FONT_MIN_PX,
         bg1,
         fg1,
     )
@@ -767,17 +745,16 @@ def render_banner_overlay(
         bg1,
         fg1,
         max_text_w,
-        pad_x=text_inset_x,
+        pad_x=banner_pad_x,
         pad_y=pad_y_line1,
-        radius=22,
-        font_start=352,
-        font_min=58,
+        radius=25,
+        font_start=BANNER_LINE1_FONT_START_PX,
+        font_min=BANNER_LINE1_FONT_MIN_PX,
         box_width=None,
         forced_font_size=line1_font_px,
     )
-    # Pull the second bar up so it touches / covers anti-alias seam (no video showing through).
-    BANNER_STACK_OVERLAP_PX = 4
-    y = y - BANNER_STACK_OVERLAP_PX
+    # Second chip starts flush below the first (no negative overlap). A few px overlap used to
+    # hide a subpixel seam but read as three muddy stacked layers; flush keeps two distinct bars.
     draw_rounded_banner_block(
         draw,
         cx,
@@ -788,10 +765,10 @@ def render_banner_overlay(
         bg2,
         fg2,
         max_text_w,
-        pad_x=text_inset_x_bottom,
+        pad_x=banner_pad_x_line2,
         pad_y=pad_y_line2,
-        radius=22,
-        font_start=232,
+        radius=25,
+        font_start=BANNER_LINE2_FONT_START_PX,
         font_min=44,
         box_width=None,
         forced_font_size=line2_font_px,
@@ -1189,9 +1166,15 @@ def ffmpeg_composite(
     timeout_sec: float | None = None,
 ) -> None:
     ffmpeg_bin = _ffmpeg_executable()
-    # No scale2ref: overlay PNG is already config-sized (e.g. 1080x1920). Scaling was
-    # shrinking the overlay to match smaller phone clips and made banners look tiny.
-    filt = "[1:v]format=rgba[ov];[0:v][ov]overlay=0:0[outv]"
+    # Pillow draws at config width×height; the *decoded* video frame may differ (e.g. SAR,
+    # bad metadata copy-skip in normalize, or odd encoder tags). Overlaying without scaling
+    # then crops or stretches one stream and yields huge/off-center bars or double-scale junk.
+    # scale2ref: scale the RGBA overlay to match the main video’s actual iw×ih (Lanczos).
+    filt = (
+        "[1:v]format=rgba[ovin];"
+        "[ovin][0:v]scale2ref=iw:ih:flags=lanczos[ov][main];"
+        "[main][ov]overlay=0:0[outv]"
+    )
     cmd: list[str] = [
         ffmpeg_bin,
         "-y",
@@ -1244,6 +1227,13 @@ def composite_one(
     ffmpeg_timeout_sec: float | None = None,
     watermark_text: str | None = None,
 ) -> dict[str, Any]:
+    video_in_path = Path(video_in).expanduser()
+    if "_overlay" in video_in_path.stem.lower():
+        log.warning(
+            'Input filename contains "_overlay" — it may already have burned-in stickers; '
+            "running again stacks a second pair of bars. Use a raw export for a clean result (%s).",
+            video_in_path.name,
+        )
     cfg = enrich_config(cfg)
     chosen = preset or random.choice(cfg["presets"])
     jitter = random.randint(-18, 18)
@@ -1271,7 +1261,10 @@ def composite_one(
             video_out,
         )
         ffmpeg_composite(
-            video_in, tmp_overlay, video_out, timeout_sec=ffmpeg_timeout_sec
+            video_in_path.resolve(),
+            tmp_overlay,
+            video_out,
+            timeout_sec=ffmpeg_timeout_sec,
         )
     finally:
         try:
@@ -1442,8 +1435,21 @@ def main() -> int:
     p = argparse.ArgumentParser(description="TikTok-style video overlays (FFmpeg + Pillow).")
     sub = p.add_subparsers(dest="cmd", required=True)
 
-    pc = sub.add_parser("composite", help="Render overlay + FFmpeg (test without watcher).")
-    pc.add_argument("input", help="Input .mp4 or .mov")
+    pc = sub.add_parser(
+        "composite",
+        help="Render overlay + FFmpeg (test without watcher).",
+        epilog=(
+            "Input must be a clean clip with no burned-in stickers. Files like "
+            "web/public/videos/demo*.mp4 are already exported with overlays—running composite "
+            "on them stacks another pair of bars. For a quick test: "
+            "samples/clean_1080x1920_6s.mp4"
+        ),
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+    )
+    pc.add_argument(
+        "input",
+        help="Input .mp4 or .mov (overlay-free; not a prior *_overlay export)",
+    )
     pc.add_argument(
         "output",
         nargs="?",
