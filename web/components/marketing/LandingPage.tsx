@@ -428,7 +428,7 @@ function GoogleDriveGlyph({ className }: { className?: string }) {
 function GetVideosToPcSection() {
   return (
     <section
-      aria-label="Syncing footage to your computer"
+      aria-label="Getting videos into BofBot"
       className="scroll-mt-24 border-y border-white/[0.04] bg-[#0a0a0a]/80 px-5 py-14 sm:px-6 sm:py-16"
     >
       <div className="mx-auto max-w-4xl">
@@ -436,15 +436,14 @@ function GetVideosToPcSection() {
           className="font-display text-center text-lg font-semibold tracking-tight text-zinc-300 sm:text-xl"
           {...fadeUp}
         >
-          Already filming? You&apos;re halfway done.
+          How to get videos to BofBot?
         </motion.h2>
         <motion.p
-          className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-zinc-500"
+          className="mx-auto mt-2 text-center text-xs font-medium tracking-wide text-zinc-600"
           {...fadeUp}
           transition={{ ...fadeUp.transition, delay: 0.04 }}
         >
-          Most creators already sync their camera roll to their computer. BofBot
-          plugs right into your existing flow.
+          Only takes a few seconds
         </motion.p>
         <div className="mt-10 grid gap-5 sm:grid-cols-2 sm:gap-6">
           <motion.div
@@ -457,11 +456,13 @@ function GetVideosToPcSection() {
                 <AppleGlyph className="h-5 w-5" />
               </span>
               <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                iPhone + Mac
+                iCloud Photos
               </span>
             </div>
             <p className="text-sm leading-relaxed text-zinc-500">
-              iCloud Photos syncs automatically. Drag videos into BofBot.
+              Automatic two-way sync. Videos go from phone to PC and back — no
+              cables, no manual transfers. Finished edits appear right in your
+              Camera Roll.
             </p>
           </motion.div>
           <motion.div
@@ -474,15 +475,44 @@ function GetVideosToPcSection() {
                 <GoogleDriveGlyph className="h-5 w-5" />
               </span>
               <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                Windows
+                Google Drive
               </span>
             </div>
             <p className="text-sm leading-relaxed text-zinc-500">
-              We recommend downloading Google Drive on your phone and uploading
-              there. Drag videos from Drive on your PC into BofBot. 2 Clicks.
+              Free and works on any phone. Sync videos to PC, edit in BofBot,
+              sync back. One extra tap to save to Camera Roll.
             </p>
           </motion.div>
         </div>
+        <motion.p
+          className="mx-auto mt-8 max-w-xl text-center text-xs leading-relaxed text-zinc-600"
+          {...fadeUp}
+          transition={{ ...fadeUp.transition, delay: 0.12 }}
+        >
+          You can also skip syncing back entirely — post directly from your
+          browser at{" "}
+          <a
+            href="https://www.tiktok.com/upload"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-[#F43F5E]/90 underline-offset-2 transition hover:text-[#fb7185] hover:underline"
+          >
+            tiktok.com/upload
+          </a>
+          .
+        </motion.p>
+        <motion.div
+          className="mt-5 flex justify-center"
+          {...fadeUp}
+          transition={{ ...fadeUp.transition, delay: 0.14 }}
+        >
+          <Link
+            href="/setup-guide"
+            className="text-sm font-medium text-[#F43F5E] underline-offset-2 transition hover:text-[#fb7185] hover:underline"
+          >
+            View full setup guide →
+          </Link>
+        </motion.div>
       </div>
     </section>
   );
