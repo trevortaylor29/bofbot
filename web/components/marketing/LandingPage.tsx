@@ -1013,6 +1013,9 @@ function Footer() {
           <Link href="/privacy" className="hover:text-white">
             Privacy
           </Link>
+          <Link href="/contact" className="hover:text-white">
+            Contact
+          </Link>
           {status === "authenticated" && session?.user ? (
             <Link href="/dashboard" className="hover:text-white">
               Dashboard
