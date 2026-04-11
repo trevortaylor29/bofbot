@@ -428,7 +428,7 @@ function GoogleDriveGlyph({ className }: { className?: string }) {
 function GetVideosToPcSection() {
   return (
     <section
-      aria-label="Getting videos onto your computer"
+      aria-label="Syncing footage to your computer"
       className="scroll-mt-24 border-y border-white/[0.04] bg-[#0a0a0a]/80 px-5 py-14 sm:px-6 sm:py-16"
     >
       <div className="mx-auto max-w-4xl">
@@ -436,14 +436,15 @@ function GetVideosToPcSection() {
           className="font-display text-center text-lg font-semibold tracking-tight text-zinc-300 sm:text-xl"
           {...fadeUp}
         >
-          Get videos to your PC in seconds
+          Already filming? You&apos;re halfway done.
         </motion.h2>
         <motion.p
-          className="mx-auto mt-2 max-w-lg text-center text-xs text-zinc-600"
+          className="mx-auto mt-3 max-w-xl text-center text-sm leading-relaxed text-zinc-500"
           {...fadeUp}
           transition={{ ...fadeUp.transition, delay: 0.04 }}
         >
-          No heavy workflow — just sync, then point BofBot at the folder.
+          Most creators already sync their camera roll to their computer. BofBot
+          plugs right into your existing flow.
         </motion.p>
         <div className="mt-10 grid gap-5 sm:grid-cols-2 sm:gap-6">
           <motion.div
@@ -456,12 +457,11 @@ function GetVideosToPcSection() {
                 <AppleGlyph className="h-5 w-5" />
               </span>
               <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                iPhone / Mac
+                iPhone + Mac
               </span>
             </div>
             <p className="text-sm leading-relaxed text-zinc-500">
-              Turn on iCloud Photos — your videos sync instantly to your Mac. No
-              cables, no transfers.
+              iCloud Photos syncs automatically. Just point BofBot at the folder.
             </p>
           </motion.div>
           <motion.div
@@ -474,12 +474,11 @@ function GetVideosToPcSection() {
                 <GoogleDriveGlyph className="h-5 w-5" />
               </span>
               <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                iPhone or Android + Windows
+                Windows
               </span>
             </div>
             <p className="text-sm leading-relaxed text-zinc-500">
-              Install Google Drive on your phone. Videos sync to your PC
-              automatically. Drop the folder into BofBot and you&apos;re done.
+              Google Drive app syncs your camera roll. BofBot watches the folder.
             </p>
           </motion.div>
         </div>
