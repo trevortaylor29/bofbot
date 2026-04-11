@@ -28,6 +28,12 @@ export function AuthenticatedShell({
             <Link href="/#pricing" className="transition hover:text-white">
               Pricing
             </Link>
+            <Link
+              href="/contact"
+              className="rounded-full border border-white/15 bg-white/[0.06] px-4 py-2 text-sm font-medium text-white transition hover:border-[#F43F5E]/45 hover:text-[#F43F5E]"
+            >
+              Contact
+            </Link>
             <form
               action={async () => {
                 "use server";
