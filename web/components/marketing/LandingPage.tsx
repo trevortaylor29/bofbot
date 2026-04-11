@@ -134,27 +134,23 @@ function Nav() {
 
 /** Eleven real BofBot output clips (`demo1`–`demo11`) in phone-style frames. */
 const HERO_DEMO_COUNT = 11;
+/** Per-deploy query string (see `next.config.ts`) so stale CDN/browser cache is not reused for same MP4 paths. */
+const DEMO_ASSET_QS = (() => {
+  const rev = process.env.NEXT_PUBLIC_DEMO_ASSET_REV;
+  return rev ? `?v=${encodeURIComponent(rev)}` : "";
+})();
 const HERO_OUTPUT_VIDEOS = Array.from(
   { length: HERO_DEMO_COUNT },
   (_, i) => {
     const n = i + 1;
     return {
-      src: `/videos/demo${n}.mp4`,
-      poster: `/videos/demo${n}.jpg`,
+      src: `/videos/demo${n}.mp4${DEMO_ASSET_QS}`,
     };
   }
 );
 
 /** Vertical phone mockup: rounded frame, video fills (muted loop for hero marquee). */
-function HeroVideoTile({
-  src,
-  poster,
-  label,
-}: {
-  src: string;
-  poster: string;
-  label: string;
-}) {
+function HeroVideoTile({ src, label }: { src: string; label: string }) {
   return (
     <div className="relative aspect-[9/16] w-[10.5rem] shrink-0 overflow-hidden rounded-[1.65rem] bg-zinc-950 shadow-[0_12px_40px_-10px_rgba(0,0,0,0.75)] ring-1 ring-inset ring-white/[0.08] sm:w-[11.75rem] sm:rounded-[1.85rem] md:w-[12.5rem] md:rounded-[2rem] lg:w-[13.25rem]">
       <video
@@ -164,7 +160,6 @@ function HeroVideoTile({
         playsInline
         className="h-full w-full object-cover object-center"
         src={src}
-        poster={poster}
         preload="metadata"
         aria-label={label}
         {...({ "webkit-playsinline": "" } as Record<string, string>)}
@@ -189,7 +184,6 @@ function HeroCarousel() {
             <HeroVideoTile
               key={`${item.src}-${i}`}
               src={item.src}
-              poster={item.poster}
               label={item.label}
             />
           ))}
