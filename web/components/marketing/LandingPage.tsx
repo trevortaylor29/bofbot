@@ -461,7 +461,7 @@ function GetVideosToPcSection() {
               </span>
             </div>
             <p className="text-sm leading-relaxed text-zinc-500">
-              iCloud Photos syncs automatically. Just point BofBot at the folder.
+              iCloud Photos syncs automatically. Drag videos into BofBot.
             </p>
           </motion.div>
           <motion.div
@@ -478,7 +478,8 @@ function GetVideosToPcSection() {
               </span>
             </div>
             <p className="text-sm leading-relaxed text-zinc-500">
-              Google Drive app syncs your camera roll. BofBot watches the folder.
+              We recommend downloading Google Drive on your phone and uploading
+              there. Drag videos from Drive on your PC into BofBot. 2 Clicks.
             </p>
           </motion.div>
         </div>
