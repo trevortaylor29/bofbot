@@ -17,6 +17,14 @@ export type BannerLineOptionPayload = {
   text_color: string;
 };
 
+export type BannerPriceStrikeHookPayload = {
+  line1_text: string;
+  line2_text: string;
+  line2_bg_color: string;
+  line2_text_color: string;
+  strike_line_color?: string;
+};
+
 export type BatchPayload = {
   filePaths: string[];
   /** `mix`: each video randomly uses banner or full text from the configured pools. */
@@ -32,6 +40,8 @@ export type BatchPayload = {
   line2EmojiPool?: string[];
   /** Legacy: only fixed pairs (e.g. custom-only batch with no chip pools). */
   bannerHooks?: { line1_text: string; line2_text: string }[];
+  /** Weighted random vs chip mix / custom pairs when banner clip is chosen. */
+  bannerPriceStrikeHooks?: BannerPriceStrikeHookPayload[];
   fulltextHooks?: { text: string }[];
   colorPresets?: {
     line1_bg_color: string;

@@ -24,6 +24,7 @@ function safeBasename(name) {
  * @param {string[]} [opts.line1EmojiPool]
  * @param {string[]} [opts.line2EmojiPool]
  * @param {{ line1_text: string, line2_text: string }[]} [opts.bannerHooks]
+ * @param {{ line1_text: string, line2_text: string, line2_bg_color: string, line2_text_color: string, strike_line_color?: string }[]} [opts.bannerPriceStrikeHooks]
  * @param {{ text: string }[]} [opts.fulltextHooks]
  * @param {{ line1_bg_color: string, line1_text_color: string, line2_bg_color: string, line2_text_color: string }[]} [opts.colorPresets]
  * @param {string} opts.apiBase public site origin for user-facing URLs (no trailing slash)
@@ -45,6 +46,7 @@ async function runBatch(opts) {
     line1EmojiPool,
     line2EmojiPool,
     bannerHooks,
+    bannerPriceStrikeHooks,
     fulltextHooks,
     colorPresets,
     onProgress,
@@ -159,6 +161,9 @@ async function runBatch(opts) {
       }
       if (colorPresets && colorPresets.length) {
         body.color_presets = colorPresets;
+      }
+      if (bannerPriceStrikeHooks && bannerPriceStrikeHooks.length > 0) {
+        body.banner_price_strike_hooks = bannerPriceStrikeHooks;
       }
     } else {
       body.fulltext_hooks = fulltextHooks;

@@ -89,6 +89,18 @@ export const FULLTEXT_PRESETS: FulltextPreset[] = [
     id: "f4",
     text: "This deal is not going to last — grab it before the sale ends tonight",
   },
+  {
+    id: "f5",
+    text: "Someone f'd up at TikTok cus this just went on a massive discount with free shipping...",
+  },
+  {
+    id: "f6",
+    text: "Anyone else grabbing a boatload of this today since it's a fraction of the price?",
+  },
+  {
+    id: "f7",
+    text: "When a company accidentally overproduced their best product so they're VIOLENTLY discounted today 😭",
+  },
 ];
 
 export const BANNER_CUSTOM_PLACEHOLDER = `40% OFF | 4 HOURS LEFT

@@ -481,6 +481,7 @@ function registerIpc({ ipcMain }) {
       line1EmojiPool,
       line2EmojiPool,
       bannerHooks,
+      bannerPriceStrikeHooks,
       fulltextHooks,
       colorPresets,
       customBannerPairCount,
@@ -562,10 +563,15 @@ function registerIpc({ ipcMain }) {
           : null;
       const fixedN = Array.isArray(bannerFixedHooks) ? bannerFixedHooks.length : 0;
       const legacyN = Array.isArray(bannerHooks) ? bannerHooks.length : 0;
+      const strikeN = Array.isArray(bannerPriceStrikeHooks)
+        ? bannerPriceStrikeHooks.length
+        : 0;
       if (l1 && l2) {
-        bannerHookCount = l1.length * l2.length + fixedN;
+        bannerHookCount = l1.length * l2.length + fixedN + strikeN;
       } else if (legacyN > 0) {
-        bannerHookCount = legacyN;
+        bannerHookCount = legacyN + strikeN;
+      } else if (strikeN > 0) {
+        bannerHookCount = strikeN;
       }
     }
     if (overlayStyle === "fulltext" || overlayStyle === "mix") {
@@ -581,7 +587,8 @@ function registerIpc({ ipcMain }) {
       if (bannerHookCount < 1) {
         return {
           ok: false,
-          error: "Mix mode needs banner hooks: pick top and bottom chips or add custom pairs.",
+          error:
+            "Mix mode needs banner hooks: pick top and bottom chips, add custom pairs, or enable a strike layout preset.",
         };
       }
       if (fulltextHookCount < 1) {
@@ -617,6 +624,7 @@ function registerIpc({ ipcMain }) {
       line1EmojiPool,
       line2EmojiPool,
       bannerHooks,
+      bannerPriceStrikeHooks,
       fulltextHooks,
       colorPresets,
       onProgress: send,

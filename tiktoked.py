@@ -43,6 +43,16 @@ BANNER_LINE1_FONT_MIN_PX = 44
 # Line-2 chip cap (legacy 232px at 352px line-1 cap), scaled to match line-1 start.
 BANNER_LINE2_FONT_START_PX = int(round(232 * BANNER_LINE1_FONT_START_PX / 352))
 
+# “FULL PRICE” strike + red % pill (`style: banner_price_strike`) — TikTok-style reference layout.
+PRICE_STRIKE_LINE1_START_PX = 208
+PRICE_STRIKE_LINE1_MIN_PX = 54
+PRICE_STRIKE_GAP_BELOW_STRIKE_PX = 12
+PRICE_STRIKE_LINE2_SIZE_MULT = 1.26
+PRICE_STRIKE_LINE2_MIN_PX = 52
+PRICE_STRIKE_LINE2_CAP_PX = BANNER_LINE1_FONT_START_PX + 36
+PRICE_STRIKE_LINE2_BOX_FRAC = 0.72
+PRICE_STRIKE_BANNER_RADIUS_PX = 28
+
 # Broad emoji / pictograph removal when no emoji font is available
 _EMOJI_RE = re.compile(
     "["
@@ -597,6 +607,47 @@ def fit_banner_line2_font_size(
     return abs_floor
 
 
+def _price_strike_outline_px(font_px: int) -> int:
+    """Thick black outline on white strike-through label (TikTok reference)."""
+    return max(5, min(14, int(round(font_px * 0.078))))
+
+
+def fit_price_strike_top_font(
+    text: str,
+    draw: ImageDraw.ImageDraw,
+    font_path: Path,
+    emoji_path: Path | None,
+    max_width: int,
+    start: int,
+    minimum: int,
+) -> ImageFont.FreeTypeFont:
+    size = start
+    while size >= minimum:
+        fnt = load_main_font(font_path, size)
+        emo: ImageFont.FreeTypeFont | None = None
+        if emoji_path and emoji_path.is_file():
+            try:
+                emo = ImageFont.truetype(str(emoji_path), size)
+            except OSError:
+                emo = None
+        sw = _price_strike_outline_px(size)
+        eh = _emoji_target_h(size)
+        if (
+            mixed_text_length(
+                text,
+                draw,
+                fnt,
+                emo,
+                eh,
+                latin_stroke_width=sw,
+            )
+            <= max_width
+        ):
+            return fnt
+        size -= 2
+    return load_main_font(font_path, minimum)
+
+
 def draw_rounded_banner_block(
     draw: ImageDraw.ImageDraw,
     cx: int,
@@ -772,6 +823,139 @@ def render_banner_overlay(
         font_min=44,
         box_width=None,
         forced_font_size=line2_font_px,
+    )
+    return img
+
+
+def _hex_rgb_triplet(s: str) -> tuple[int, int, int]:
+    h = str(s).strip().lstrip("#")
+    if len(h) >= 6:
+        try:
+            return int(h[0:2], 16), int(h[2:4], 16), int(h[4:6], 16)
+        except ValueError:
+            pass
+    return 255, 0, 0
+
+
+def render_banner_price_strike_overlay(
+    cfg: dict[str, Any],
+    preset: dict[str, Any],
+    jitter_y: int,
+    font_main: Path,
+) -> Image.Image:
+    """
+    TikTok-style: outlined white strike label (no chip) + red horizontal strike + larger red pill below.
+    Preset: line1_text (e.g. FULL PRICE), line2_text (e.g. 40% OFF 🚨), line2_bg_color, line2_text_color;
+    optional strike_line_color (default #FF0000). line1_* chip colors are ignored for the top row.
+    """
+    w, h = int(cfg["video_width"]), int(cfg["video_height"])
+    img = Image.new("RGBA", (w, h), (0, 0, 0, 0))
+    draw = ImageDraw.Draw(img)
+
+    line1 = prepare_text_for_render(str(preset["line1_text"]), cfg.get("_emoji_path"))
+    line2 = prepare_text_for_render(str(preset["line2_text"]), cfg.get("_emoji_path"))
+
+    banner_pad_x = 34
+    max_text_w = max(1, int(round(w * 0.82)) - 2 * banner_pad_x)
+    pad_y_line2 = 12
+    banner_pad_x_line2 = max(22, int(round(banner_pad_x * 0.88)))
+    min_chip_w = max(1, int(round(w * PRICE_STRIKE_LINE2_BOX_FRAC)))
+
+    banner_top_nudge_px = 92
+    zone_top = int(h * 0.058) + jitter_y + banner_top_nudge_px
+    cx = w // 2
+    y = float(zone_top)
+    emo_p = cfg.get("_emoji_path")
+    bg2 = str(preset["line2_bg_color"])
+    fg2 = str(preset["line2_text_color"])
+    strike_rgb = _hex_rgb_triplet(str(preset.get("strike_line_color") or "#FF0000"))
+
+    line1_fnt = fit_price_strike_top_font(
+        line1,
+        draw,
+        font_main,
+        emo_p,
+        max_text_w,
+        PRICE_STRIKE_LINE1_START_PX,
+        PRICE_STRIKE_LINE1_MIN_PX,
+    )
+    sz1 = line1_fnt.size
+    sw1 = _price_strike_outline_px(sz1)
+    eh1 = _emoji_target_h(sz1)
+    emoji_font1: ImageFont.FreeTypeFont | None = None
+    if emo_p and Path(str(emo_p)).is_file():
+        try:
+            emoji_font1 = ImageFont.truetype(str(emo_p), sz1)
+        except OSError:
+            emoji_font1 = None
+    ink_h = mixed_line_ink_height(
+        line1, draw, line1_fnt, emoji_font1, eh1, latin_stroke_width=sw1
+    )
+    pad_v_strike = 8
+    block_h = float(ink_h + pad_v_strike * 2)
+    cy = y + block_h / 2.0
+    tw = mixed_text_length(
+        line1, draw, line1_fnt, emoji_font1, eh1, latin_stroke_width=sw1
+    )
+    draw_text_mixed_centered(
+        draw,
+        float(cx),
+        cy,
+        line1,
+        line1_fnt,
+        emoji_font1,
+        "#FFFFFF",
+        sw1,
+        "#000000",
+        True,
+        eh1,
+    )
+    y_strike = int(round(cy))
+    extend = max(8, int(round(sz1 * 0.055)))
+    x1s = int(round(cx - tw / 2 - extend))
+    x2s = int(round(cx + tw / 2 + extend))
+    line_w = max(4, min(12, sz1 // 11))
+    draw.line(
+        [(x1s, y_strike), (x2s, y_strike)],
+        fill=(*strike_rgb, 255),
+        width=line_w,
+    )
+
+    y = int(y + block_h) + PRICE_STRIKE_GAP_BELOW_STRIKE_PX
+
+    line2_target = int(round(sz1 * PRICE_STRIKE_LINE2_SIZE_MULT))
+    line2_target = max(
+        PRICE_STRIKE_LINE2_MIN_PX, min(PRICE_STRIKE_LINE2_CAP_PX, line2_target)
+    )
+    if line2_target % 2:
+        line2_target -= 1
+    sz2 = line2_target
+    while sz2 >= PRICE_STRIKE_LINE2_MIN_PX:
+        if _banner_line_fits_at_size(
+            line2, draw, font_main, emo_p, sz2, max_text_w, bg2, fg2
+        ):
+            break
+        sz2 -= 2
+    else:
+        sz2 = PRICE_STRIKE_LINE2_MIN_PX
+
+    draw_rounded_banner_block(
+        draw,
+        cx,
+        y,
+        line2,
+        font_main,
+        emo_p,
+        bg2,
+        fg2,
+        max_text_w,
+        pad_x=banner_pad_x_line2,
+        pad_y=pad_y_line2,
+        radius=PRICE_STRIKE_BANNER_RADIUS_PX,
+        font_start=BANNER_LINE2_FONT_START_PX,
+        font_min=PRICE_STRIKE_LINE2_MIN_PX,
+        box_width=min_chip_w,
+        forced_font_size=sz2,
     )
     return img
 
@@ -969,6 +1153,8 @@ def render_preset_overlay(
     style = preset.get("style", "banner")
     if style == "fulltext":
         return render_fulltext_overlay(cfg, preset, jitter_y, font_main)
+    if style == "banner_price_strike":
+        return render_banner_price_strike_overlay(cfg, preset, jitter_y, font_main)
     return render_banner_overlay(cfg, preset, jitter_y, font_main)
 
 

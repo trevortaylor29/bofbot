@@ -6,6 +6,7 @@ import {
   BANNER_EMOJI_SUFFIX_POOL,
   BANNER_LINE1_CHIPS,
   BANNER_LINE2_CHIPS,
+  BANNER_PRICE_STRIKE_PRESETS,
   FULLTEXT_PRESETS,
   TOP_BAR_ACCENT_PALETTE,
   WORKER_BANNER_COLOR_PRESETS,
@@ -59,6 +60,7 @@ export function BatchPage({ onBack, onStart }: Props) {
   const [selectedL1, setSelectedL1] = useState<Set<string>>(() => new Set(BANNER_LINE1_CHIPS.map((c) => c.id)));
   const [selectedL2, setSelectedL2] = useState<Set<string>>(() => new Set(BANNER_LINE2_CHIPS.map((c) => c.id)));
   const [selectedFulltext, setSelectedFulltext] = useState<Set<string>>(() => new Set(["f1"]));
+  const [selectedPriceStrike, setSelectedPriceStrike] = useState<Set<string>>(() => new Set());
   const [customBannerPairs, setCustomBannerPairs] = useState("");
   const [customFulltext, setCustomFulltext] = useState("");
   const [filePaths, setFilePaths] = useState<string[]>([]);
@@ -104,7 +106,17 @@ export function BatchPage({ onBack, onStart }: Props) {
     return hooks;
   }, [selectedFulltext, customFulltext]);
 
-  const bannerSideOk = canMixBanner || customPairCount > 0;
+  const bannerPriceStrikeHooks = useMemo(() => {
+    return BANNER_PRICE_STRIKE_PRESETS.filter((p) => selectedPriceStrike.has(p.id)).map((p) => ({
+      line1_text: p.line1_text,
+      line2_text: p.line2_text,
+      line2_bg_color: p.line2_bg_color,
+      line2_text_color: p.line2_text_color,
+      ...(p.strike_line_color ? { strike_line_color: p.strike_line_color } : {}),
+    }));
+  }, [selectedPriceStrike]);
+
+  const bannerSideOk = canMixBanner || customPairCount > 0 || bannerPriceStrikeHooks.length > 0;
   const fulltextValid = fulltextHooksList.length > 0;
 
   const n = filePaths.length;
@@ -136,6 +148,15 @@ export function BatchPage({ onBack, onStart }: Props) {
 
   const toggleFulltext = useCallback((id: string) => {
     setSelectedFulltext((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const togglePriceStrike = useCallback((id: string) => {
+    setSelectedPriceStrike((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -178,12 +199,18 @@ export function BatchPage({ onBack, onStart }: Props) {
 
     if (overlayStyle === "banner") {
       const fixed = parseBannerPairLines(customBannerPairs);
-      if (!canMixBanner && fixed.length < 1) {
-        setError("Select at least one top and bottom chip, or add custom pairs (top | bottom).");
+      if (!canMixBanner && fixed.length < 1 && bannerPriceStrikeHooks.length < 1) {
+        setError(
+          "Select at least one top and bottom chip, add custom pairs (top | bottom), or enable a strike layout preset."
+        );
         return null;
       }
       const colorPresets = [...WORKER_BANNER_COLOR_PRESETS];
       const emojiPool = [...BANNER_EMOJI_SUFFIX_POOL];
+      const strikeField =
+        bannerPriceStrikeHooks.length > 0
+          ? { bannerPriceStrikeHooks }
+          : {};
 
       if (canMixBanner) {
         return {
@@ -195,6 +222,18 @@ export function BatchPage({ onBack, onStart }: Props) {
           line1EmojiPool: emojiPool,
           line2EmojiPool: emojiPool,
           colorPresets,
+          ...strikeField,
+          ...customHookMeta,
+        };
+      }
+
+      if (fixed.length > 0) {
+        return {
+          filePaths,
+          overlayStyle: "banner",
+          bannerHooks: fixed,
+          colorPresets,
+          ...strikeField,
           ...customHookMeta,
         };
       }
@@ -202,8 +241,7 @@ export function BatchPage({ onBack, onStart }: Props) {
       return {
         filePaths,
         overlayStyle: "banner",
-        bannerHooks: fixed,
-        colorPresets,
+        ...strikeField,
         ...customHookMeta,
       };
     }
@@ -223,8 +261,10 @@ export function BatchPage({ onBack, onStart }: Props) {
 
     /* mix */
     const fixedMix = parseBannerPairLines(customBannerPairs);
-    if (!canMixBanner && fixedMix.length < 1) {
-      setError("Mix mode: select top and bottom chips or add custom pairs (top | bottom).");
+    if (!canMixBanner && fixedMix.length < 1 && bannerPriceStrikeHooks.length < 1) {
+      setError(
+        "Mix mode: select top and bottom chips, add custom pairs (top | bottom), or enable a strike layout preset."
+      );
       return null;
     }
     if (fulltextHooksList.length < 1) {
@@ -233,6 +273,10 @@ export function BatchPage({ onBack, onStart }: Props) {
     }
     const colorPresetsMix = [...WORKER_BANNER_COLOR_PRESETS];
     const emojiPoolMix = [...BANNER_EMOJI_SUFFIX_POOL];
+    const strikeFieldMix =
+      bannerPriceStrikeHooks.length > 0
+        ? { bannerPriceStrikeHooks }
+        : {};
     if (canMixBanner) {
       return {
         filePaths,
@@ -243,6 +287,7 @@ export function BatchPage({ onBack, onStart }: Props) {
         line1EmojiPool: emojiPoolMix,
         line2EmojiPool: emojiPoolMix,
         colorPresets: colorPresetsMix,
+        ...strikeFieldMix,
         fulltextHooks: fulltextHooksList,
         ...customHookMeta,
       };
@@ -250,8 +295,9 @@ export function BatchPage({ onBack, onStart }: Props) {
     return {
       filePaths,
       overlayStyle: "mix",
-      bannerHooks: fixedMix,
+      bannerHooks: fixedMix.length > 0 ? fixedMix : undefined,
       colorPresets: colorPresetsMix,
+      ...strikeFieldMix,
       fulltextHooks: fulltextHooksList,
       ...customHookMeta,
     };
@@ -373,11 +419,11 @@ export function BatchPage({ onBack, onStart }: Props) {
 
   const hookHint =
     n > 0 && overlayStyle === "banner" && !bannerSideOk
-      ? "Pick top and bottom chips or add custom pairs."
+      ? "Pick top and bottom chips, add custom pairs, or enable a strike layout preset."
       : n > 0 && overlayStyle === "fulltext" && !fulltextValid
         ? "Select at least one hook."
         : n > 0 && overlayStyle === "mix" && !bannerSideOk
-          ? "Mix mode: configure banner hooks (chips or custom pairs)."
+          ? "Mix mode: configure banner hooks (chips, custom pairs, or strike layout)."
           : n > 0 && overlayStyle === "mix" && !fulltextValid
             ? "Mix mode: select at least one full text hook."
             : null;
@@ -464,6 +510,37 @@ export function BatchPage({ onBack, onStart }: Props) {
               <p className="batch-section-lead">Top and bottom text are randomly mixed per video.</p>
               <TopTextChips chips={BANNER_LINE1_CHIPS} selected={selectedL1} onToggle={toggleL1} />
               <BottomTextChips chips={BANNER_LINE2_CHIPS} selected={selectedL2} onToggle={toggleL2} />
+
+              <div style={{ marginTop: 14, marginBottom: 2 }}>
+                <div className="form-label form-label--inline-row" style={{ marginBottom: 8 }}>
+                  <span>Strike layout</span>
+                  <InfoTip
+                    label="Strike layout preset"
+                    text="Optional TikTok-style banner: outlined top line with a strike-through and a red pill below. Each video randomly picks this or your chip combinations (and custom pairs), weighted by how many variants you turn on."
+                  />
+                </div>
+                <div className="hook-chip-row">
+                  {BANNER_PRICE_STRIKE_PRESETS.map((p) => {
+                    const on = selectedPriceStrike.has(p.id);
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        className={`hook-chip hook-chip--wide ${on ? "hook-chip--on" : ""}`}
+                        onClick={() => togglePriceStrike(p.id)}
+                        title={`${p.line1_text} / ${p.line2_text}`}
+                      >
+                        <span className="hook-chip__check" aria-hidden>
+                          <CheckIcon />
+                        </span>
+                        <span className="hook-chip__text">
+                          {p.line1_text} · {p.line2_text}
+                        </span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
 
               <div className="field" style={{ marginTop: "1rem", marginBottom: 0 }}>
                 <div className="form-label form-label--inline-row" style={{ marginBottom: 8 }}>
@@ -585,7 +662,11 @@ export function BatchPage({ onBack, onStart }: Props) {
               className="btn-primary btn-primary--large"
               style={{ width: "100%" }}
               disabled={!canProcess}
-              title={!canProcess ? "Select hooks or add custom pairs." : undefined}
+              title={
+                !canProcess
+                  ? "Select hooks, custom pairs, or a strike layout preset (and full text in mix mode)."
+                  : undefined
+              }
               onClick={() => void onProcess()}
             >
               Process batch

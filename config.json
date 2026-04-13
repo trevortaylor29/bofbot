@@ -59,6 +59,16 @@
       "line2_text_color": "#000000"
     },
     {
+      "style": "banner_price_strike",
+      "line1_text": "FULL PRICE",
+      "line1_bg_color": "#000000",
+      "line1_text_color": "#FFFFFF",
+      "line2_text": "40% OFF 🚨",
+      "line2_bg_color": "#FF0000",
+      "line2_text_color": "#FFFFFF",
+      "strike_line_color": "#FF0000"
+    },
+    {
       "style": "fulltext",
       "text": "If you waited until today you absolutely won because this is dirt cheap rn with free shipping"
     },
@@ -69,6 +79,18 @@
     {
       "style": "fulltext",
       "text": "Anyone else grabbing a boatload of these today since it's a fraction of the price?"
+    },
+    {
+      "style": "fulltext",
+      "text": "Anyone else grabbing a boatload of this today since it's a fraction of the price?"
+    },
+    {
+      "style": "fulltext",
+      "text": "Someone f'd up at TikTok cus this just went on a massive discount with free shipping..."
+    },
+    {
+      "style": "fulltext",
+      "text": "When a company accidentally overproduced their best product so they're VIOLENTLY discounted today 😭"
     }
   ]
 }

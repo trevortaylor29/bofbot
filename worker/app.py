@@ -97,6 +97,16 @@ class BannerColors(BaseModel):
     line2_text_color: str
 
 
+class BannerPriceStrikeHook(BaseModel):
+    """Preset for `style: banner_price_strike` in tiktoked (strike-through top label + pill)."""
+
+    line1_text: str
+    line2_text: str
+    line2_bg_color: str
+    line2_text_color: str
+    strike_line_color: str | None = None
+
+
 class ProcessRequest(BaseModel):
     """Paths under media root, forward slashes."""
 
@@ -106,6 +116,7 @@ class ProcessRequest(BaseModel):
     banner_hooks: list[BannerHook] | None = None
     """Fixed (line1, line2) pairs; used with mix mode — weighted random vs composed random."""
     banner_fixed_hooks: list[BannerHook] | None = None
+    banner_price_strike_hooks: list[BannerPriceStrikeHook] | None = None
     banner_line1_options: list[BannerLineOption] | None = None
     banner_line2_options: list[BannerLineOption] | None = None
     line1_emoji_pool: list[str] | None = Field(
@@ -137,10 +148,14 @@ class ProcessRequest(BaseModel):
                 and len(self.banner_line2_options) > 0
             )
             legacy = bool(self.banner_hooks and len(self.banner_hooks) > 0)
-            if not mix and not legacy:
+            strike = bool(
+                self.banner_price_strike_hooks and len(self.banner_price_strike_hooks) > 0
+            )
+            if not mix and not legacy and not strike:
                 raise ValueError(
-                    "banner mode requires banner_hooks (fixed pairs only) or both "
-                    "banner_line1_options and banner_line2_options (random mix)"
+                    "banner mode requires banner_hooks (fixed pairs only), both "
+                    "banner_line1_options and banner_line2_options (random mix), "
+                    "or banner_price_strike_hooks"
                 )
             if (mix or legacy) and not self.color_presets:
                 self.color_presets = [
@@ -233,6 +248,29 @@ def _build_preset(req: ProcessRequest) -> tuple[dict[str, Any], dict[str, Any], 
         preset = {"style": "fulltext", "text": hook.text}
         meta = {"text": hook.text}
         return preset, meta, None
+
+    strike_hooks = list(req.banner_price_strike_hooks or [])
+
+    def strike_preset_and_meta() -> tuple[dict[str, Any], dict[str, Any], None]:
+        h = random.choice(strike_hooks)
+        preset: dict[str, Any] = {
+            "style": "banner_price_strike",
+            "line1_text": h.line1_text,
+            "line2_text": h.line2_text,
+            "line1_bg_color": "#000000",
+            "line1_text_color": "#FFFFFF",
+            "line2_bg_color": h.line2_bg_color,
+            "line2_text_color": h.line2_text_color,
+        }
+        if h.strike_line_color:
+            preset["strike_line_color"] = h.strike_line_color
+        meta = {
+            "line1_text": h.line1_text,
+            "line2_text": h.line2_text,
+            "banner_price_strike": True,
+        }
+        return preset, meta, None
+
     if (
         req.banner_line1_options
         and req.banner_line2_options
@@ -263,8 +301,29 @@ def _build_preset(req: ProcessRequest) -> tuple[dict[str, Any], dict[str, Any], 
 
         w_fix = len(fixed_hooks)
         w_mix = max(1, len(req.banner_line1_options) * len(req.banner_line2_options))
+        w_strike = len(strike_hooks)
 
-        if w_fix > 0 and random.randint(1, w_fix + w_mix) <= w_fix:
+        branches: list[tuple[str, int]] = []
+        if w_fix > 0:
+            branches.append(("fixed", w_fix))
+        branches.append(("mix", w_mix))
+        if w_strike > 0:
+            branches.append(("strike", w_strike))
+
+        total_w = sum(w for _, w in branches)
+        r = random.randint(1, total_w)
+        acc = 0
+        chosen = branches[-1][0]
+        for name, w in branches:
+            acc += w
+            if r <= acc:
+                chosen = name
+                break
+
+        if chosen == "strike":
+            return strike_preset_and_meta()
+
+        if chosen == "fixed":
             h = random.choice(fixed_hooks)
             line1_t, line2_t = h.line1_text, h.line2_text
             meta_extra: dict[str, Any] = {"from_fixed_hook": True}
@@ -289,7 +348,30 @@ def _build_preset(req: ProcessRequest) -> tuple[dict[str, Any], dict[str, Any], 
             **meta_extra,
         }
         return preset, meta, cp
-    hook = random.choice(req.banner_hooks or [])
+
+    legacy_hooks = list(req.banner_hooks or [])
+    w_leg = len(legacy_hooks)
+    w_strike = len(strike_hooks)
+
+    if w_leg > 0 and w_strike > 0:
+        if random.randint(1, w_leg + w_strike) <= w_leg:
+            hook = random.choice(legacy_hooks)
+            colors = random.choice(req.color_presets or [])
+            cp = colors.model_dump()
+            preset = {
+                "style": "banner",
+                "line1_text": hook.line1_text,
+                "line2_text": hook.line2_text,
+                **cp,
+            }
+            meta = {"line1_text": hook.line1_text, "line2_text": hook.line2_text}
+            return preset, meta, cp
+        return strike_preset_and_meta()
+
+    if w_strike > 0:
+        return strike_preset_and_meta()
+
+    hook = random.choice(legacy_hooks)
     colors = random.choice(req.color_presets or [])
     cp = colors.model_dump()
     preset = {

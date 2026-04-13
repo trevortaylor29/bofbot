@@ -10,6 +10,27 @@ export type LineChip = {
 
 export type FulltextPreset = { id: string; text: string };
 
+/** Toggleable desktop preset → worker `banner_price_strike`. */
+export type BannerPriceStrikePreset = {
+  id: string;
+  line1_text: string;
+  line2_text: string;
+  line2_bg_color: string;
+  line2_text_color: string;
+  strike_line_color?: string;
+};
+
+export const BANNER_PRICE_STRIKE_PRESETS: BannerPriceStrikePreset[] = [
+  {
+    id: "ps1",
+    line1_text: "FULL PRICE",
+    line2_text: "40% OFF 🚨",
+    line2_bg_color: "#FF0000",
+    line2_text_color: "#FFFFFF",
+    strike_line_color: "#FF0000",
+  },
+];
+
 /** Top bar accent pool (random per video, independent of top line text). */
 export const TOP_BAR_ACCENT_PALETTE: { name: string; hex: string }[] = [
   { name: "pink", hex: "#FF69B4" },
@@ -72,6 +93,18 @@ export const FULLTEXT_PRESETS: FulltextPreset[] = [
   {
     id: "f2",
     text: "TikTok bullied the price down and now this is on a massive sale with free shipping for the next few hours 😳",
+  },
+  {
+    id: "f3",
+    text: "Someone f'd up at TikTok cus this just went on a massive discount with free shipping...",
+  },
+  {
+    id: "f4",
+    text: "Anyone else grabbing a boatload of this today since it's a fraction of the price?",
+  },
+  {
+    id: "f5",
+    text: "When a company accidentally overproduced their best product so they're VIOLENTLY discounted today 😭",
   },
 ];
 
