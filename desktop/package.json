@@ -90,7 +90,8 @@
       "icon": "icon.png",
       "artifactName": "BofBot-Setup.dmg",
       "category": "public.app-category.video",
-      "forceCodeSigning": false
+      "forceCodeSigning": false,
+      "identity": null
     }
   },
   "devDependencies": {
