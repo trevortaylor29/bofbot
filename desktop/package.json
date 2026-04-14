@@ -89,7 +89,8 @@
       "target": "dmg",
       "icon": "icon.png",
       "artifactName": "BofBot-Setup.dmg",
-      "category": "public.app-category.video"
+      "category": "public.app-category.video",
+      "forceCodeSigning": false
     }
   },
   "devDependencies": {

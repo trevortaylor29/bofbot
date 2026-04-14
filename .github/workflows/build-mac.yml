@@ -35,9 +35,24 @@ jobs:
         working-directory: desktop
         run: npm install
 
-      - name: Build renderer, pipeline, and Mac DMG
+      - name: Build renderer and worker pipeline
         working-directory: desktop
-        run: npm run build:renderer && npm run build:pipeline && npx electron-builder --mac --publish never
+        run: npm run build:renderer && npm run build:pipeline
+
+      # PyInstaller embeds Python.framework with loose root files that break codesign sealing.
+      - name: Fix PyInstaller Python.framework for macOS codesign
+        run: |
+          FRAMEWORK_DIR=$(find desktop/build/pipeline-staging -name 'Python.framework' -type d | head -1)
+          if [ -d "$FRAMEWORK_DIR" ]; then
+            find "$FRAMEWORK_DIR" -maxdepth 1 -type f -delete
+            find "$FRAMEWORK_DIR" -name '__pycache__' -type d -exec rm -rf {} + 2>/dev/null || true
+          fi
+
+      - name: Build Mac DMG (no Apple code signing)
+        working-directory: desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: "false"
+        run: npx electron-builder --mac --publish never
 
       - name: Upload DMG artifact
         uses: actions/upload-artifact@v4
