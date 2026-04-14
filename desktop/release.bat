@@ -71,6 +71,10 @@ if errorlevel 1 (
 
 echo.
 echo Done. Release includes BofBot-Setup.exe + latest.yml ^(auto-update + website^).
+echo.
+echo Mac: run the GitHub Action "Build Mac DMG" ^(.github/workflows/build-mac.yml^) to produce
+echo       BofBot-Setup.dmg, then upload it to this release if you ship Mac builds.
+echo.
 echo Commit the bump: git add package.json ^&^& git commit -m "desktop v%NEW_VER%" ^&^& git push
 echo.
 endlocal

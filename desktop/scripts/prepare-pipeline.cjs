@@ -24,11 +24,14 @@ function copyBin(src, destName) {
 fs.rmSync(outDir, { recursive: true, force: true });
 fs.mkdirSync(ffmpegOut, { recursive: true });
 
-const ffmpegStatic = require("ffmpeg-static");
+// Platform-matched static binaries (Windows .exe, macOS/Linux no extension).
+const ffmpegInstaller = require("@ffmpeg-installer/ffmpeg");
 const ffprobeInstaller = require("@ffprobe-installer/ffprobe");
 
-copyBin(ffmpegStatic, process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg");
-copyBin(ffprobeInstaller.path, process.platform === "win32" ? "ffprobe.exe" : "ffprobe");
+const ffmpegDest = process.platform === "win32" ? "ffmpeg.exe" : "ffmpeg";
+const ffprobeDest = process.platform === "win32" ? "ffprobe.exe" : "ffprobe";
+copyBin(ffmpegInstaller.path, ffmpegDest);
+copyBin(ffprobeInstaller.path, ffprobeDest);
 
 const pyDist = path.join(desktopDir, "build", "pyinstaller-dist");
 const pyWork = path.join(desktopDir, "build", "pyinstaller-work");

@@ -1,0 +1,47 @@
+# Manual macOS desktop build (DMG). Does not publish to GitHub Releases.
+# After a Windows release, run this workflow and attach the artifact to the release if needed.
+name: Build Mac DMG
+
+on:
+  workflow_dispatch:
+
+jobs:
+  mac:
+    runs-on: macos-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: |
+            requirements.txt
+            requirements-worker.txt
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+
+      - name: Install PyInstaller and worker dependencies
+        run: pip install pyinstaller -r requirements-worker.txt
+
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm install
+
+      - name: Build renderer, pipeline, and Mac DMG
+        working-directory: desktop
+        run: npm run build:renderer && npm run build:pipeline && npx electron-builder --mac --publish never
+
+      - name: Upload DMG artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: BofBot-Mac-DMG
+          path: desktop/release/*.dmg
+          if-no-files-found: error

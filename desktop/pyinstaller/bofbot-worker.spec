@@ -1,12 +1,18 @@
 # -*- mode: python ; coding: utf-8 -*-
 # Run from repo root: pyinstaller desktop/pyinstaller/bofbot-worker.spec
 # Requires: pip install -r requirements-worker.txt pyinstaller
+#
+# Windows → dist/bofbot-worker/bofbot-worker.exe; macOS/Linux → …/bofbot-worker (no .exe).
 
+import sys
 from pathlib import Path
 
 from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
+
+# UPX breaks many macOS binaries and complicates code signing; keep off on Darwin.
+_USE_UPX = sys.platform != "darwin"
 
 SPEC_DIR = Path(SPECPATH).resolve()
 REPO_ROOT = SPEC_DIR.parent.parent
@@ -79,7 +85,7 @@ exe = EXE(
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
-    upx=True,
+    upx=_USE_UPX,
     console=True,
     disable_windowed_traceback=False,
     argv_emulation=False,

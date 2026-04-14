@@ -7,10 +7,14 @@ import { useState, type ReactNode } from "react";
 
 import { BrandLogoMark } from "@/components/brand-mark";
 import {
+  BofBotInstallerDownloadFooter,
+  BofBotInstallerDownloadHero,
+  BofBotInstallerDownloadNav,
+} from "@/components/bofbot-installer-download";
+import {
   PricingCheckoutButton,
   PricingFreeCta,
 } from "@/components/marketing/PricingCheckoutButton";
-import { BOFBOT_WINDOWS_INSTALLER_URL } from "@/lib/bofbot-desktop-installer";
 import { planDefinition } from "@/lib/plans";
 import { WINDOWS_SMARTSCREEN_FAQ } from "@/lib/windows-install-security-note";
 
@@ -120,12 +124,7 @@ function Nav() {
               Log in
             </Link>
           )}
-          <a
-            href={BOFBOT_WINDOWS_INSTALLER_URL}
-            className="shrink-0 rounded-full bg-[#F43F5E] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#F43F5E]/30 ring-1 ring-white/10 transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(244,63,94,0.4)]"
-          >
-            Download
-          </a>
+          <BofBotInstallerDownloadNav />
         </div>
       </div>
     </header>
@@ -271,12 +270,7 @@ function HeroSection() {
           {...fadeUp}
           transition={{ ...fadeUp.transition, delay: 0.15 }}
         >
-          <a
-            href={BOFBOT_WINDOWS_INSTALLER_URL}
-            className="inline-flex items-center justify-center rounded-full bg-[#F43F5E] px-10 py-4 text-base font-semibold text-white shadow-[0_0_48px_-6px_rgba(244,63,94,0.35)] ring-1 ring-white/10 transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(244,63,94,0.4)]"
-          >
-            Download BofBot
-          </a>
+          <BofBotInstallerDownloadHero />
           <a
             href="#how-it-works"
             className="text-sm font-medium text-zinc-400 underline-offset-4 transition hover:text-white hover:underline"
@@ -1024,12 +1018,7 @@ function Footer() {
               </Link>
             </>
           )}
-          <a
-            href={BOFBOT_WINDOWS_INSTALLER_URL}
-            className="hover:text-white"
-          >
-            Download
-          </a>
+          <BofBotInstallerDownloadFooter />
         </nav>
         <p className="text-sm text-zinc-600">
           © {new Date().getFullYear()} BofBot. All rights reserved.

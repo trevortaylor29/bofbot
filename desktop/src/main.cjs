@@ -199,9 +199,10 @@ function spawnWorker() {
     if (fs.existsSync(ffmpegDir)) {
       env.BOFBOT_FFMPEG_DIR = ffmpegDir;
     }
-    const workerName =
+    // Windows: PyInstaller emits bofbot-worker.exe. macOS/Linux: executable has no extension.
+    const workerBinary =
       process.platform === "win32" ? "bofbot-worker.exe" : "bofbot-worker";
-    const workerExe = path.join(pipe, "worker", workerName);
+    const workerExe = path.join(pipe, "worker", workerBinary);
     if (!fs.existsSync(workerExe)) {
       throw new Error(
         `Bundled worker missing (${workerExe}). Re-run npm run build:pipeline.`

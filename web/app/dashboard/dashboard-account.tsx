@@ -3,8 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 
-import { BOFBOT_WINDOWS_INSTALLER_URL } from "@/lib/bofbot-desktop-installer";
-import { WINDOWS_SMARTSCREEN_FAQ } from "@/lib/windows-install-security-note";
+import { BofBotInstallerDownloadDashboard } from "@/components/bofbot-installer-download";
 
 export function BillingPortalButton({
   hasStripeCustomer,
@@ -83,26 +82,5 @@ export function BillingPortalButton({
 }
 
 export function DownloadBofBotCta() {
-  return (
-    <div>
-      <a
-        href={BOFBOT_WINDOWS_INSTALLER_URL}
-        className="inline-flex w-full items-center justify-center rounded-xl bg-[#F43F5E] px-6 py-4 text-base font-semibold text-white shadow-[0_0_40px_-8px_rgba(244,63,94,0.45)] ring-1 ring-white/10 transition hover:opacity-95 sm:w-auto"
-      >
-        Download BofBot
-      </a>
-      <p className="mt-3 text-center text-sm text-zinc-400">
-        Windows installer — run the setup, then sign in with this account.
-      </p>
-      <p className="mt-2 flex items-start justify-center gap-1.5 text-left text-xs leading-relaxed text-zinc-500">
-        <span
-          className="mt-0.5 inline-flex h-4 w-4 shrink-0 items-center justify-center rounded-full border border-zinc-600 bg-zinc-800/80 text-[10px] font-semibold text-zinc-400"
-          aria-hidden
-        >
-          i
-        </span>
-        <span>{WINDOWS_SMARTSCREEN_FAQ.a}</span>
-      </p>
-    </div>
-  );
+  return <BofBotInstallerDownloadDashboard />;
 }
