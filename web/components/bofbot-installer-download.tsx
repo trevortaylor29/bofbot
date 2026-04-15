@@ -22,45 +22,57 @@ function useInstallerOs(): InstallerOs {
 const navPrimaryClass =
   "shrink-0 rounded-full bg-[#F43F5E] px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-[#F43F5E]/30 ring-1 ring-white/10 transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(244,63,94,0.4)]";
 
-const navSecondaryClass =
-  "shrink-0 rounded-full border border-white/15 bg-white/[0.06] px-3.5 py-2 text-sm font-semibold text-zinc-100 ring-1 ring-white/10 transition hover:border-white/25 hover:bg-white/[0.1]";
-
 const heroPrimaryClass =
   "inline-flex items-center justify-center rounded-full bg-[#F43F5E] px-10 py-4 text-base font-semibold text-white shadow-[0_0_48px_-6px_rgba(244,63,94,0.35)] ring-1 ring-white/10 transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.03] hover:shadow-[0_0_20px_rgba(244,63,94,0.4)]";
 
-const heroSecondaryClass =
-  "inline-flex items-center justify-center rounded-full border border-white/15 bg-white/[0.06] px-8 py-3.5 text-sm font-semibold text-zinc-100 ring-1 ring-white/10 transition hover:border-white/25 hover:bg-white/[0.1]";
+/** Small text link to the other installer (below the primary download). */
+const otherInstallerLinkClass =
+  "text-xs font-medium text-zinc-400 underline-offset-2 transition hover:text-zinc-200 hover:underline";
 
 export function BofBotInstallerDownloadNav() {
   const os = useInstallerOs();
   if (os === "windows") {
     return (
-      <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={navPrimaryClass}>
-        Download for Windows
-      </a>
+      <div className="flex shrink-0 flex-col items-end gap-1">
+        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={navPrimaryClass}>
+          Download for Windows
+        </a>
+        <a
+          href={BOFBOT_MAC_INSTALLER_URL}
+          className={`${otherInstallerLinkClass} text-right`}
+        >
+          Mac version →
+        </a>
+      </div>
     );
   }
   if (os === "mac") {
     return (
-      <div className="flex shrink-0 flex-col items-end gap-1.5">
+      <div className="flex shrink-0 flex-col items-end gap-1">
         <a href={BOFBOT_MAC_INSTALLER_URL} className={navPrimaryClass}>
           Download for Mac
+        </a>
+        <a
+          href={BOFBOT_WINDOWS_INSTALLER_URL}
+          className={`${otherInstallerLinkClass} text-right`}
+        >
+          Windows version →
         </a>
         <MacInstallHelpLink align="right" />
       </div>
     );
   }
   return (
-    <div className="flex shrink-0 flex-wrap items-end justify-end gap-2">
-      <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={navPrimaryClass}>
-        Windows
-      </a>
-      <div className="flex flex-col items-end gap-1.5">
-        <a href={BOFBOT_MAC_INSTALLER_URL} className={navSecondaryClass}>
-          Mac
+    <div className="flex shrink-0 flex-col items-end gap-2">
+      <div className="flex flex-wrap items-end justify-end gap-2">
+        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={navPrimaryClass}>
+          Download for Windows
         </a>
-        <MacInstallHelpLink align="right" />
+        <a href={BOFBOT_MAC_INSTALLER_URL} className={navPrimaryClass}>
+          Download for Mac
+        </a>
       </div>
+      <MacInstallHelpLink align="right" />
     </div>
   );
 }
@@ -69,67 +81,90 @@ export function BofBotInstallerDownloadHero() {
   const os = useInstallerOs();
   if (os === "windows") {
     return (
-      <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={heroPrimaryClass}>
-        Download for Windows
-      </a>
+      <div className="flex flex-col items-center gap-1.5">
+        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={heroPrimaryClass}>
+          Download for Windows
+        </a>
+        <a href={BOFBOT_MAC_INSTALLER_URL} className={otherInstallerLinkClass}>
+          Mac version →
+        </a>
+      </div>
     );
   }
   if (os === "mac") {
     return (
-      <div className="flex flex-col items-center gap-2">
+      <div className="flex flex-col items-center gap-1.5">
         <a href={BOFBOT_MAC_INSTALLER_URL} className={heroPrimaryClass}>
           Download for Mac
+        </a>
+        <a
+          href={BOFBOT_WINDOWS_INSTALLER_URL}
+          className={otherInstallerLinkClass}
+        >
+          Windows version →
         </a>
         <MacInstallHelpLink />
       </div>
     );
   }
   return (
-    <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start sm:gap-4">
-      <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={heroPrimaryClass}>
-        Download for Windows
-      </a>
-      <div className="flex flex-col items-center gap-2">
-        <a href={BOFBOT_MAC_INSTALLER_URL} className={heroSecondaryClass}>
+    <div className="flex flex-col items-center gap-3">
+      <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start sm:gap-4">
+        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={heroPrimaryClass}>
+          Download for Windows
+        </a>
+        <a href={BOFBOT_MAC_INSTALLER_URL} className={heroPrimaryClass}>
           Download for Mac
         </a>
-        <MacInstallHelpLink />
       </div>
+      <MacInstallHelpLink />
     </div>
   );
 }
+
+const footerPrimaryClass = "font-semibold text-zinc-300 hover:text-white";
+const footerOtherClass =
+  "text-xs font-medium text-zinc-500 underline-offset-2 hover:text-zinc-300 hover:underline";
 
 export function BofBotInstallerDownloadFooter() {
   const os = useInstallerOs();
   if (os === "windows") {
     return (
-      <a href={BOFBOT_WINDOWS_INSTALLER_URL} className="hover:text-white">
-        Download for Windows
-      </a>
+      <span className="inline-flex flex-col items-center gap-1 sm:items-end">
+        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={footerPrimaryClass}>
+          Download for Windows
+        </a>
+        <a href={BOFBOT_MAC_INSTALLER_URL} className={footerOtherClass}>
+          Mac version →
+        </a>
+      </span>
     );
   }
   if (os === "mac") {
     return (
       <span className="inline-flex flex-col items-center gap-1 sm:items-end">
-        <a href={BOFBOT_MAC_INSTALLER_URL} className="hover:text-white">
+        <a href={BOFBOT_MAC_INSTALLER_URL} className={footerPrimaryClass}>
           Download for Mac
+        </a>
+        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={footerOtherClass}>
+          Windows version →
         </a>
         <MacInstallHelpLink align="center" className="text-zinc-500 hover:text-zinc-300" />
       </span>
     );
   }
   return (
-    <>
-      <a href={BOFBOT_WINDOWS_INSTALLER_URL} className="hover:text-white">
-        Download for Windows
-      </a>
-      <span className="inline-flex flex-col items-center gap-1 sm:items-end">
-        <a href={BOFBOT_MAC_INSTALLER_URL} className="hover:text-white">
+    <span className="inline-flex flex-col items-center gap-2 sm:items-end">
+      <span className="flex flex-col items-center gap-2 sm:flex-row sm:gap-6">
+        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={footerPrimaryClass}>
+          Download for Windows
+        </a>
+        <a href={BOFBOT_MAC_INSTALLER_URL} className={footerPrimaryClass}>
           Download for Mac
         </a>
-        <MacInstallHelpLink align="center" className="text-zinc-500 hover:text-zinc-300" />
       </span>
-    </>
+      <MacInstallHelpLink align="center" className="text-zinc-500 hover:text-zinc-300" />
+    </span>
   );
 }
 
