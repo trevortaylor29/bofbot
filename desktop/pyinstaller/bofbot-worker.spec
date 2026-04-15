@@ -2,7 +2,8 @@
 # Run from repo root: pyinstaller desktop/pyinstaller/bofbot-worker.spec
 # Requires: pip install -r requirements-worker.txt pyinstaller
 #
-# Windows → dist/bofbot-worker/bofbot-worker.exe; macOS/Linux → …/bofbot-worker (no .exe).
+# Windows/Linux → onedir: dist/bofbot-worker/bofbot-worker(.exe) + _internal/
+# macOS → onefile: dist/bofbot-worker (single binary; avoids broken Python.framework in _internal)
 
 import sys
 from pathlib import Path
@@ -11,8 +12,9 @@ from PyInstaller.utils.hooks import collect_all
 
 block_cipher = None
 
+_IS_DARWIN = sys.platform == "darwin"
 # UPX breaks many macOS binaries and complicates code signing; keep off on Darwin.
-_USE_UPX = sys.platform != "darwin"
+_USE_UPX = not _IS_DARWIN
 
 SPEC_DIR = Path(SPECPATH).resolve()
 REPO_ROOT = SPEC_DIR.parent.parent
@@ -76,28 +78,52 @@ a = Analysis(
 
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
-exe = EXE(
-    pyz,
-    a.scripts,
-    [],
-    exclude_binaries=True,
-    name="bofbot-worker",
-    debug=False,
-    bootloader_ignore_signals=False,
-    strip=False,
-    upx=_USE_UPX,
-    console=True,
-    disable_windowed_traceback=False,
-    argv_emulation=False,
-    target_arch=None,
-    codesign_identity=None,
-    entitlements_file=None,
-)
+if _IS_DARWIN:
+    # One-file bundle: Python dylibs are packed into the executable (fixes missing Python in _internal).
+    exe = EXE(
+        pyz,
+        a.scripts,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        [],
+        name="bofbot-worker",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=False,
+        upx_exclude=[],
+        runtime_tmpdir=None,
+        console=True,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+    )
+else:
+    exe = EXE(
+        pyz,
+        a.scripts,
+        [],
+        exclude_binaries=True,
+        name="bofbot-worker",
+        debug=False,
+        bootloader_ignore_signals=False,
+        strip=False,
+        upx=_USE_UPX,
+        console=True,
+        disable_windowed_traceback=False,
+        argv_emulation=False,
+        target_arch=None,
+        codesign_identity=None,
+        entitlements_file=None,
+    )
 
-coll = COLLECT(
-    exe,
-    a.binaries,
-    a.zipfiles,
-    a.datas,
-    name="bofbot-worker",
-)
+    coll = COLLECT(
+        exe,
+        a.binaries,
+        a.zipfiles,
+        a.datas,
+        name="bofbot-worker",
+    )

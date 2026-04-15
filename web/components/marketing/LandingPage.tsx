@@ -891,7 +891,9 @@ function PricingSection() {
   );
 }
 
-const faqs = [
+type FaqItem = { q: string; a: string | ReactNode };
+
+const faqs: FaqItem[] = [
   {
     q: "Does it work on Mac?",
     a: "Yes. BofBot runs locally on macOS and Windows — your videos are processed on your machine.",
@@ -904,7 +906,22 @@ const faqs = [
     q: "Do I need an internet connection?",
     a: "Yes. The app needs internet to sign in and verify your subscription while you use it. Encoding still runs entirely on your computer — your source files are not uploaded for processing.",
   },
-  WINDOWS_SMARTSCREEN_FAQ,
+  { ...WINDOWS_SMARTSCREEN_FAQ },
+  {
+    q: "Mac says BofBot is damaged?",
+    a: (
+      <>
+        This is normal for new apps. Follow our{" "}
+        <Link
+          href="/mac-help"
+          className="font-medium text-[#fb7185] underline underline-offset-2 hover:text-[#fda4af]"
+        >
+          one-minute Mac installation guide
+        </Link>{" "}
+        to fix it.
+      </>
+    ),
+  },
   {
     q: "Will TikTok ban me?",
     a: "BofBot only adds overlays to videos you own. It doesn’t automate posting or violate platform rules — always follow TikTok Shop and community guidelines.",
@@ -964,9 +981,9 @@ function FAQSection() {
                       exit={{ height: 0, opacity: 0 }}
                       transition={{ duration: 0.25, ease: easeOutExpo }}
                     >
-                      <p className="border-t border-white/[0.06] px-5 pb-4 pt-3 text-sm leading-relaxed text-zinc-400">
-                        {item.a}
-                      </p>
+                      <div className="border-t border-white/[0.06] px-5 pb-4 pt-3 text-sm leading-relaxed text-zinc-400 [&_a]:text-[#fb7185] [&_a]:underline [&_a]:underline-offset-2">
+                        {typeof item.a === "string" ? <p className="m-0">{item.a}</p> : item.a}
+                      </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1003,6 +1020,9 @@ function Footer() {
           </Link>
           <Link href="/contact" className="hover:text-white">
             Contact
+          </Link>
+          <Link href="/mac-help" className="hover:text-white">
+            Mac Help
           </Link>
           {status === "authenticated" && session?.user ? (
             <Link href="/dashboard" className="hover:text-white">

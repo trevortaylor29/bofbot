@@ -11,6 +11,7 @@ type Props = {
 export function SettingsPage({ email, onBack, onLogout }: Props) {
   const [mediaRoot, setMediaRoot] = useState<string>("");
   const [saved, setSaved] = useState(false);
+  const [folderError, setFolderError] = useState<string | null>(null);
   const [updateCheckBusy, setUpdateCheckBusy] = useState(false);
   const [updateCheckMessage, setUpdateCheckMessage] = useState<string | null>(
     null
@@ -36,10 +37,19 @@ export function SettingsPage({ email, onBack, onLogout }: Props) {
   }, []);
 
   async function pickFolder() {
+    setFolderError(null);
     const p = await window.bofbot.pickOutputFolder();
     if (!p) return;
-    await window.bofbot.setMediaRoot(p);
-    setMediaRoot(p);
+    const r = await window.bofbot.setMediaRoot(p);
+    if (!r.ok) {
+      setFolderError(
+        r.error ??
+          "That folder is not writable. Choose another location or fix permissions."
+      );
+      return;
+    }
+    const resolved = await window.bofbot.getMediaRoot();
+    setMediaRoot(resolved);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   }
@@ -56,6 +66,9 @@ export function SettingsPage({ email, onBack, onLogout }: Props) {
       setUpdateCheckBusy(false);
       if (!r.ok) {
         setUpdateCheckMessage(r.error || "Could not check for updates.");
+        return;
+      }
+      if (r.skipped) {
         return;
       }
       if (r.devMode) {
@@ -125,14 +138,19 @@ export function SettingsPage({ email, onBack, onLogout }: Props) {
               Media folder
             </p>
             <p style={{ fontSize: "0.85rem", wordBreak: "break-all", margin: "0 0 0.75rem" }}>{mediaRoot || "…"}</p>
-            <button type="button" className="btn-ghost" onClick={pickFolder}>
+            <button type="button" className="btn-ghost" onClick={() => void pickFolder()}>
               Choose folder…
             </button>
-            {saved && (
+            {folderError ? (
+              <p style={{ color: "var(--coral)", fontSize: "0.8rem", margin: "0.75rem 0 0", lineHeight: 1.45 }}>
+                {folderError}
+              </p>
+            ) : null}
+            {saved && !folderError ? (
               <p style={{ color: "var(--muted)", fontSize: "0.8rem", margin: "0.75rem 0 0" }}>
                 Saved. Restart the app for the worker to use the new path.
               </p>
-            )}
+            ) : null}
           </div>
 
           <div className="card" style={{ marginBottom: "var(--section-gap)" }}>

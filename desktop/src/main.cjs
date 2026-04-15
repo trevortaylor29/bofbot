@@ -90,12 +90,80 @@ function writeStore(data) {
   fs.writeFileSync(storePath(), JSON.stringify(data, null, 2), "utf8");
 }
 
-function getMediaRoot() {
-  const s = readStore();
-  if (s.mediaRoot && typeof s.mediaRoot === "string") {
-    return s.mediaRoot;
-  }
+function defaultMediaRoot() {
   return path.join(app.getPath("userData"), "bofbot-media");
+}
+
+/**
+ * Ensure folder exists and the app can write inside it (mkdir + probe file).
+ * @param {string} rootAbs
+ * @returns {{ ok: true } | { ok: false, error: string }}
+ */
+function validateMediaRootWritable(rootAbs) {
+  try {
+    fs.mkdirSync(rootAbs, { recursive: true });
+    const probe = path.join(rootAbs, ".bofbot-write-probe");
+    fs.writeFileSync(probe, "1", "utf8");
+    fs.unlinkSync(probe);
+    return { ok: true };
+  } catch (e) {
+    const code = e && typeof e === "object" && "code" in e ? String(e.code) : "";
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      error: code ? `${msg} (${code})` : msg,
+    };
+  }
+}
+
+/** Cleared when the user saves a new media root so the next read re-validates. */
+let mediaRootCache = null;
+
+function invalidateMediaRootCache() {
+  mediaRootCache = null;
+}
+
+/**
+ * Absolute media root: uses saved path if present and writable, else userData/bofbot-media.
+ * If the saved path fails (missing, EPERM, read-only, etc.), clears it from the store and falls back.
+ */
+function getMediaRoot() {
+  if (mediaRootCache !== null) return mediaRootCache;
+
+  const s = readStore();
+  const fallback = defaultMediaRoot();
+  const raw =
+    s.mediaRoot && typeof s.mediaRoot === "string" ? s.mediaRoot.trim() : "";
+  const configured = raw ? path.resolve(raw) : null;
+
+  if (configured) {
+    const v = validateMediaRootWritable(configured);
+    if (v.ok) {
+      mediaRootCache = configured;
+      return configured;
+    }
+    console.warn(
+      "[desktop] Saved media folder is not usable; resetting to default:",
+      configured,
+      v.error
+    );
+    delete s.mediaRoot;
+    writeStore(s);
+  }
+
+  const v2 = validateMediaRootWritable(fallback);
+  if (!v2.ok) {
+    console.error(
+      "[desktop] Default media folder is not writable:",
+      fallback,
+      v2.error
+    );
+    throw new Error(
+      `Cannot use or create the media folder under app data: ${v2.error}`
+    );
+  }
+  mediaRootCache = fallback;
+  return fallback;
 }
 
 function getRecentBatches() {
@@ -183,7 +251,6 @@ function pipelineResourcesRoot() {
 
 function spawnWorker() {
   const mediaRoot = getMediaRoot();
-  fs.mkdirSync(mediaRoot, { recursive: true });
   const env = {
     ...process.env,
     PYTHONUNBUFFERED: "1",
@@ -348,10 +415,27 @@ function registerIpc({ ipcMain }) {
   ipcMain.handle("settings:getMediaRoot", async () => getMediaRoot());
 
   ipcMain.handle("settings:setMediaRoot", async (_e, p) => {
-    if (!p || typeof p !== "string") return { ok: false };
+    if (!p || typeof p !== "string") {
+      return { ok: false, error: "Invalid folder path." };
+    }
+    const trimmed = p.trim();
+    if (!trimmed) {
+      return { ok: false, error: "Invalid folder path." };
+    }
+    const resolved = path.resolve(trimmed);
+    const v = validateMediaRootWritable(resolved);
+    if (!v.ok) {
+      return {
+        ok: false,
+        error:
+          v.error ||
+          "That folder is not writable. Choose another location or fix permissions.",
+      };
+    }
     const s = readStore();
-    s.mediaRoot = p;
+    s.mediaRoot = resolved;
     writeStore(s);
+    invalidateMediaRootCache();
     return { ok: true };
   });
 

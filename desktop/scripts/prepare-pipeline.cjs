@@ -71,6 +71,23 @@ if (!fs.existsSync(builtWorker)) {
   process.exit(1);
 }
 
-fs.cpSync(builtWorker, targetWorker, { recursive: true });
+fs.rmSync(targetWorker, { recursive: true, force: true });
+const st = fs.statSync(builtWorker);
+if (st.isDirectory()) {
+  fs.cpSync(builtWorker, targetWorker, { recursive: true });
+} else {
+  // macOS onefile: single executable at dist/bofbot-worker
+  const innerName = process.platform === "win32" ? "bofbot-worker.exe" : "bofbot-worker";
+  fs.mkdirSync(targetWorker, { recursive: true });
+  const destBin = path.join(targetWorker, innerName);
+  fs.copyFileSync(builtWorker, destBin);
+  if (process.platform !== "win32") {
+    try {
+      fs.chmodSync(destBin, 0o755);
+    } catch {
+      /* ignore */
+    }
+  }
+}
 console.log("[prepare-pipeline] worker →", targetWorker);
 console.log("[prepare-pipeline] done →", outDir);

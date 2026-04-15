@@ -160,7 +160,9 @@ export default function App() {
               if (!r.ok) {
                 setUpdateBusy(false);
                 setUpdateProgressPercent(null);
-                setUpdateErr(r.error ?? "Update failed.");
+                if (!("skipped" in r) || !r.skipped) {
+                  setUpdateErr(r.error ?? "Update failed.");
+                }
               }
             }}
             onNotNow={() => {

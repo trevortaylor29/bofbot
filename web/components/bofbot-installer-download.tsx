@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 
+import { MacInstallHelpLink } from "@/components/mac-install-help-link";
 import {
   BOFBOT_MAC_INSTALLER_URL,
   BOFBOT_WINDOWS_INSTALLER_URL,
@@ -41,19 +42,25 @@ export function BofBotInstallerDownloadNav() {
   }
   if (os === "mac") {
     return (
-      <a href={BOFBOT_MAC_INSTALLER_URL} className={navPrimaryClass}>
-        Download for Mac
-      </a>
+      <div className="flex shrink-0 flex-col items-end gap-1.5">
+        <a href={BOFBOT_MAC_INSTALLER_URL} className={navPrimaryClass}>
+          Download for Mac
+        </a>
+        <MacInstallHelpLink align="right" />
+      </div>
     );
   }
   return (
-    <div className="flex shrink-0 flex-wrap items-center justify-end gap-2">
+    <div className="flex shrink-0 flex-wrap items-end justify-end gap-2">
       <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={navPrimaryClass}>
         Windows
       </a>
-      <a href={BOFBOT_MAC_INSTALLER_URL} className={navSecondaryClass}>
-        Mac
-      </a>
+      <div className="flex flex-col items-end gap-1.5">
+        <a href={BOFBOT_MAC_INSTALLER_URL} className={navSecondaryClass}>
+          Mac
+        </a>
+        <MacInstallHelpLink align="right" />
+      </div>
     </div>
   );
 }
@@ -69,19 +76,25 @@ export function BofBotInstallerDownloadHero() {
   }
   if (os === "mac") {
     return (
-      <a href={BOFBOT_MAC_INSTALLER_URL} className={heroPrimaryClass}>
-        Download for Mac
-      </a>
+      <div className="flex flex-col items-center gap-2">
+        <a href={BOFBOT_MAC_INSTALLER_URL} className={heroPrimaryClass}>
+          Download for Mac
+        </a>
+        <MacInstallHelpLink />
+      </div>
     );
   }
   return (
-    <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:gap-4">
+    <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start sm:gap-4">
       <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={heroPrimaryClass}>
         Download for Windows
       </a>
-      <a href={BOFBOT_MAC_INSTALLER_URL} className={heroSecondaryClass}>
-        Download for Mac
-      </a>
+      <div className="flex flex-col items-center gap-2">
+        <a href={BOFBOT_MAC_INSTALLER_URL} className={heroSecondaryClass}>
+          Download for Mac
+        </a>
+        <MacInstallHelpLink />
+      </div>
     </div>
   );
 }
@@ -97,9 +110,12 @@ export function BofBotInstallerDownloadFooter() {
   }
   if (os === "mac") {
     return (
-      <a href={BOFBOT_MAC_INSTALLER_URL} className="hover:text-white">
-        Download for Mac
-      </a>
+      <span className="inline-flex flex-col items-center gap-1 sm:items-end">
+        <a href={BOFBOT_MAC_INSTALLER_URL} className="hover:text-white">
+          Download for Mac
+        </a>
+        <MacInstallHelpLink align="center" className="text-zinc-500 hover:text-zinc-300" />
+      </span>
     );
   }
   return (
@@ -107,9 +123,12 @@ export function BofBotInstallerDownloadFooter() {
       <a href={BOFBOT_WINDOWS_INSTALLER_URL} className="hover:text-white">
         Download for Windows
       </a>
-      <a href={BOFBOT_MAC_INSTALLER_URL} className="hover:text-white">
-        Download for Mac
-      </a>
+      <span className="inline-flex flex-col items-center gap-1 sm:items-end">
+        <a href={BOFBOT_MAC_INSTALLER_URL} className="hover:text-white">
+          Download for Mac
+        </a>
+        <MacInstallHelpLink align="center" className="text-zinc-500 hover:text-zinc-300" />
+      </span>
     </>
   );
 }
@@ -125,22 +144,28 @@ export function BofBotInstallerDownloadDashboard() {
   return (
     <div>
       {os === "unknown" ? (
-        <div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:justify-center">
+        <div className="flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row sm:justify-center sm:items-start">
           <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={primaryClass}>
             Download for Windows
           </a>
-          <a href={BOFBOT_MAC_INSTALLER_URL} className={secondaryClass}>
-            Download for Mac
-          </a>
+          <div className="flex w-full max-w-xs flex-col items-center gap-2 sm:w-auto">
+            <a href={BOFBOT_MAC_INSTALLER_URL} className={secondaryClass}>
+              Download for Mac
+            </a>
+            <MacInstallHelpLink />
+          </div>
         </div>
       ) : os === "windows" ? (
         <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={primaryClass}>
           Download for Windows
         </a>
       ) : (
-        <a href={BOFBOT_MAC_INSTALLER_URL} className={primaryClass}>
-          Download for Mac
-        </a>
+        <div className="flex flex-col items-center gap-2">
+          <a href={BOFBOT_MAC_INSTALLER_URL} className={primaryClass}>
+            Download for Mac
+          </a>
+          <MacInstallHelpLink />
+        </div>
       )}
       <p className="mt-3 text-center text-sm text-zinc-400">
         {os === "mac"

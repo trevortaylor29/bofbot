@@ -25,7 +25,9 @@ declare global {
       >;
       pickOutputFolder: () => Promise<string | null>;
       getMediaRoot: () => Promise<string>;
-      setMediaRoot: (p: string) => Promise<{ ok: boolean }>;
+      setMediaRoot: (
+        p: string
+      ) => Promise<{ ok: boolean; error?: string }>;
       openDashboard: () => Promise<{ ok: boolean }>;
       openSignup: () => Promise<{ ok: boolean }>;
       openPricing: () => Promise<{ ok: boolean }>;
@@ -48,13 +50,18 @@ declare global {
       }>;
       onProgress: (fn: (ev: ProgressEvent) => void) => () => void;
       onPlanSnapshot: (fn: (data: { videosProcessedToday: number }) => void) => () => void;
-      downloadAppUpdate: () => Promise<{ ok: boolean; error?: string }>;
+      downloadAppUpdate: () => Promise<{
+        ok: boolean;
+        error?: string;
+        skipped?: boolean;
+      }>;
       checkForUpdates: () => Promise<
         | {
             ok: true;
             updateAvailable: boolean;
             remoteVersion?: string;
             devMode?: boolean;
+            skipped?: boolean;
           }
         | { ok: false; error: string }
       >;

@@ -9,6 +9,17 @@ const { autoUpdater } = require("electron-updater");
 const GITHUB_OWNER = "trevortaylor29";
 const GITHUB_REPO = "bofbot";
 
+/** Missing latest-mac.yml / 404 on GitHub Releases — skip noise until Mac metadata is published. */
+function isIgnorableMacUpdaterError(e) {
+  if (process.platform !== "darwin") return false;
+  const msg = String(e?.message ?? e ?? "");
+  const code = e?.statusCode ?? e?.status;
+  if (code === 404) return true;
+  if (/404|not found|no published versions/i.test(msg)) return true;
+  if (/latest-mac\.yml/i.test(msg)) return true;
+  return false;
+}
+
 function stripHtml(raw) {
   let s = String(raw)
     .replace(/<script[\s\S]*?<\/script>/gi, " ")
@@ -61,6 +72,9 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
       return { ok: true };
     } catch (e) {
       userRequestedInstall = false;
+      if (isIgnorableMacUpdaterError(e)) {
+        return { ok: false, skipped: true };
+      }
       const msg = e instanceof Error ? e.message : String(e);
       const win = getMainWindow();
       if (win?.webContents && !win.isDestroyed()) {
@@ -85,6 +99,9 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
         remoteVersion: result.updateInfo?.version,
       };
     } catch (e) {
+      if (isIgnorableMacUpdaterError(e)) {
+        return { ok: true, updateAvailable: false, skipped: true };
+      }
       const msg = e instanceof Error ? e.message : String(e);
       return { ok: false, error: msg };
     }
@@ -143,11 +160,17 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
   });
 
   autoUpdater.on("error", (err) => {
+    if (isIgnorableMacUpdaterError(err)) {
+      return;
+    }
     console.error("[desktop] auto-updater:", err?.message || err);
   });
 
   setTimeout(() => {
     autoUpdater.checkForUpdates().catch((e) => {
+      if (isIgnorableMacUpdaterError(e)) {
+        return;
+      }
       console.error("[desktop] checkForUpdates:", e?.message || e);
     });
   }, 6000);
