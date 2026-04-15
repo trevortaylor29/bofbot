@@ -903,7 +903,7 @@ type FaqItem = { q: string; a: string | ReactNode };
 const faqs: FaqItem[] = [
   {
     q: "Does it work on Mac?",
-    a: "Yes. BofBot runs locally on macOS and Windows — your videos are processed on your machine.",
+    a: "Yes. BofBot runs locally on macOS and Windows — your videos are processed on your machine. The Mac build is less stable than Windows; we recommend installing the free version first to confirm everything works on your Mac before upgrading.",
   },
   {
     q: "Is there a free trial?",

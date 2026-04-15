@@ -1,6 +1,6 @@
 {
   "name": "bofbot-desktop",
-  "version": "0.2.10",
+  "version": "0.2.11",
   "private": true,
   "description": "BofBot desktop — local UI + Python worker; auth/plan via production API (see src/config.ts)",
   "repository": {
@@ -86,7 +86,10 @@
       "releaseType": "release"
     },
     "mac": {
-      "target": ["dmg", "zip"],
+      "target": [
+        "dmg",
+        "zip"
+      ],
       "icon": "icon.png",
       "artifactName": "BofBot-Setup.${ext}",
       "category": "public.app-category.video",

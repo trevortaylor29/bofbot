@@ -9,6 +9,8 @@ declare global {
       getRuntimeInfo: () => Promise<{
         isPackaged: boolean;
         platform: NodeJS.Platform;
+        workerPort: number;
+        workerBaseUrl: string;
       }>;
       login: (
         email: string,

@@ -29,13 +29,17 @@ if (!app.isPackaged) {
 }
 const { spawn } = require("child_process");
 const http = require("http");
+const net = require("net");
 const treeKill = require("tree-kill");
 const { createAuthApi } = require("./main/auth-api.cjs");
 const { runBatch } = require("./main/process-batch.cjs");
 const { registerAutoUpdate } = require("./main/auto-updater.cjs");
 
-const WORKER_PORT = 8000;
-const WORKER_HEALTH_URL = `http://127.0.0.1:${WORKER_PORT}/health`;
+const WORKER_PORT_MIN = 8000;
+const WORKER_PORT_MAX = 8010;
+
+/** Set in `bootstrap` after a free loopback port is chosen (8000–8010). */
+let workerPort = WORKER_PORT_MIN;
 
 const API_BASE = (
   process.env.BOFBOT_API_URL ||
@@ -45,10 +49,68 @@ const API_BASE = (
   .trim()
   .replace(/\/$/, "");
 
-const WORKER_URL = (
-  process.env.WORKER_URL || `http://127.0.0.1:${WORKER_PORT}`
-).replace(/\/$/, "");
 const WORKER_KEY = (process.env.WORKER_API_KEY || "").trim();
+
+/**
+ * @returns {{ mode: "local-default" } | { mode: "remote", url: string } | { mode: "local-explicit", url: string, port: number }}
+ */
+function normalizeWorkerUrlEnv() {
+  const raw = (process.env.WORKER_URL || "").trim().replace(/\/$/, "");
+  if (!raw) return { mode: "local-default" };
+  try {
+    const u = new URL(raw);
+    const host = u.hostname.toLowerCase();
+    if (host === "127.0.0.1" || host === "localhost") {
+      const port = parseInt(u.port || "80", 10);
+      if (!port || Number.isNaN(port)) return { mode: "local-default" };
+      return { mode: "local-explicit", url: raw, port };
+    }
+    return { mode: "remote", url: raw };
+  } catch {
+    return { mode: "local-default" };
+  }
+}
+
+function getWorkerBaseUrl() {
+  const w = normalizeWorkerUrlEnv();
+  if (w.mode === "remote" || w.mode === "local-explicit") return w.url;
+  return `http://127.0.0.1:${workerPort}`.replace(/\/$/, "");
+}
+
+function getWorkerHealthUrl() {
+  return `http://127.0.0.1:${workerPort}/health`;
+}
+
+/**
+ * True if nothing is listening on 127.0.0.1:port (we bind then close; does not kill other processes).
+ * @param {number} port
+ */
+function canBindLocalPort(port) {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    const fail = () => resolve(false);
+    server.once("error", fail);
+    server.listen(port, "127.0.0.1", () => {
+      server.removeListener("error", fail);
+      server.close(() => resolve(true));
+    });
+  });
+}
+
+/**
+ * Picks a free port for the bundled/local worker: 8000–8010, or the port from WORKER_URL when it points at loopback.
+ * @returns {Promise<number | null>}
+ */
+async function chooseWorkerPort() {
+  const w = normalizeWorkerUrlEnv();
+  if (w.mode === "local-explicit") {
+    return (await canBindLocalPort(w.port)) ? w.port : null;
+  }
+  for (let p = WORKER_PORT_MIN; p <= WORKER_PORT_MAX; p++) {
+    if (await canBindLocalPort(p)) return p;
+  }
+  return null;
+}
 
 let mainWindow = null;
 let workerProc = null;
@@ -257,7 +319,7 @@ function spawnWorker() {
     PYTHONUTF8: "1",
     BOFBOT_MEDIA_ROOT: mediaRoot,
     TIKTOKED_MEDIA_ROOT: mediaRoot,
-    BOFBOT_WORKER_PORT: String(WORKER_PORT),
+    BOFBOT_WORKER_PORT: String(workerPort),
   };
 
   const pipe = pipelineResourcesRoot();
@@ -291,7 +353,7 @@ function spawnWorker() {
     "--host",
     "127.0.0.1",
     "--port",
-    String(WORKER_PORT),
+    String(workerPort),
   ];
   return spawn(bin, args, {
     cwd: DEV_REPO_ROOT,
@@ -342,7 +404,7 @@ async function startWorkerOnly() {
       console.error("[desktop] worker exited", code);
     }
   });
-  await waitForHttpOk(WORKER_HEALTH_URL, 90_000);
+  await waitForHttpOk(getWorkerHealthUrl(), 90_000);
 }
 
 function createWindow() {
@@ -457,6 +519,8 @@ function registerIpc({ ipcMain }) {
   ipcMain.handle("app:getRuntimeInfo", () => ({
     isPackaged: app.isPackaged,
     platform: process.platform,
+    workerPort,
+    workerBaseUrl: getWorkerBaseUrl(),
   }));
 
   /**
@@ -737,7 +801,7 @@ function registerIpc({ ipcMain }) {
         const result = await runBatch({
           authApi,
           apiBase: API_BASE,
-          workerBase: WORKER_URL,
+          workerBase: getWorkerBaseUrl(),
           workerKey: WORKER_KEY || undefined,
           mediaRoot: getMediaRoot(),
           fileAbsolutePaths: filePaths,
@@ -818,12 +882,23 @@ async function bootstrap() {
   const { ipcMain } = require("electron");
   registerIpc({ ipcMain });
 
+  const chosen = await chooseWorkerPort();
+  if (chosen == null) {
+    dialog.showErrorBox(
+      "BofBot",
+      "Could not start BofBot — ports are in use. Close other apps and try again."
+    );
+    app.quit();
+    return;
+  }
+  workerPort = chosen;
+
   try {
     await startWorkerOnly();
     createWindow();
   } catch (err) {
     console.error(err);
-    await dialog.showErrorBox(
+    dialog.showErrorBox(
       "BofBot — could not start worker",
       err.message || String(err)
     );
