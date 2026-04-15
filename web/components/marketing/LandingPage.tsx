@@ -463,7 +463,7 @@ function GetVideosToPcSection() {
                 <GoogleDriveGlyph className="h-5 w-5" />
               </span>
               <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-                Google Drive
+                Google Drive (Recommended)
               </span>
             </div>
             <p className="text-sm leading-relaxed text-zinc-500">
@@ -501,6 +501,13 @@ function GetVideosToPcSection() {
             View full setup guide →
           </Link>
         </motion.div>
+        <motion.p
+          className="mx-auto mt-4 max-w-xl text-center text-[11px] leading-relaxed text-zinc-600 sm:text-xs"
+          {...fadeUp}
+          transition={{ ...fadeUp.transition, delay: 0.16 }}
+        >
+          We recommend Windows for best performance.
+        </motion.p>
       </div>
     </section>
   );

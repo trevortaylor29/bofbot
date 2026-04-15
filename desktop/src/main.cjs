@@ -556,196 +556,243 @@ function registerIpc({ ipcMain }) {
     return r.filePaths;
   });
 
-  ipcMain.handle("batch:process", async (_e, payload) => {
-    const {
-      filePaths,
-      overlayStyle,
-      bannerLine1Options,
-      bannerLine2Options,
-      bannerFixedHooks,
-      line1EmojiPool,
-      line2EmojiPool,
-      bannerHooks,
-      bannerPriceStrikeHooks,
-      fulltextHooks,
-      colorPresets,
-      customBannerPairCount,
-      customFulltextLineCount,
-    } = payload;
-
-    if (!Array.isArray(filePaths) || filePaths.length === 0) {
-      return { ok: false, error: "No videos selected." };
-    }
-
-    const planRes = await authApi.getPlan();
-    if (!planRes.ok) {
-      if (planRes.error === "not_signed_in") {
-        return {
-          ok: false,
-          error: "Not signed in.",
-          code: "not_signed_in",
-        };
+  /**
+   * Long-running batch uses send + reply channel (not invoke) so the renderer is not blocked
+   * waiting on ipcRenderer.invoke — on macOS that blocked state prevented batch:progress from
+   * being handled until the batch finished. Progress and plan:snapshot go to event.sender.
+   */
+  ipcMain.on("batch:process-run", (event, envelope) => {
+    void (async () => {
+      if (
+        !envelope ||
+        typeof envelope.requestId !== "string" ||
+        !envelope.requestId ||
+        !envelope.payload ||
+        typeof envelope.payload !== "object"
+      ) {
+        return;
       }
-      return {
-        ok: false,
-        error: MSG_PLAN_INTERNET,
-        code: "plan_unreachable",
+      const { requestId, payload } = envelope;
+      const wc = event.sender;
+
+      const reply = (result) => {
+        try {
+          if (wc && !wc.isDestroyed()) {
+            wc.send(`batch:process-done-${requestId}`, result);
+          }
+        } catch (_) {
+          /* ignore */
+        }
       };
-    }
 
-    lastPlanCache = planRes;
+      try {
+        const {
+          filePaths,
+          overlayStyle,
+          bannerLine1Options,
+          bannerLine2Options,
+          bannerFixedHooks,
+          line1EmojiPool,
+          line2EmojiPool,
+          bannerHooks,
+          bannerPriceStrikeHooks,
+          fulltextHooks,
+          colorPresets,
+          customBannerPairCount,
+          customFulltextLineCount,
+        } = payload;
 
-    const { plan, videosProcessedToday, limits } = planRes.plan;
-    const maxDayPre = limits.maxVideosPerDay;
-    if (maxDayPre !== -1 && videosProcessedToday >= maxDayPre) {
-      return {
-        ok: false,
-        error: MSG_PLAN_DAILY,
-        code: "daily_limit",
-      };
-    }
+        if (!Array.isArray(filePaths) || filePaths.length === 0) {
+          reply({ ok: false, error: "No videos selected." });
+          return;
+        }
 
-    const customBannerN = Number(customBannerPairCount) || 0;
-    const customFtN = Number(customFulltextLineCount) || 0;
-    const customTotal = customBannerN + customFtN;
-    const maxH = limits.maxCustomHooks;
-    const maxCustomAllowed =
-      maxH === -1 ? Number.POSITIVE_INFINITY : Math.max(0, maxH);
-    if (customTotal > maxCustomAllowed) {
-      const pid = normalizeDesktopPlanId(plan);
-      if (pid === "starter") {
-        return {
-          ok: false,
-          error: MSG_PLAN_STARTER_CUSTOM,
-          code: "starter_custom",
+        const planRes = await authApi.getPlan();
+        if (!planRes.ok) {
+          if (planRes.error === "not_signed_in") {
+            reply({
+              ok: false,
+              error: "Not signed in.",
+              code: "not_signed_in",
+            });
+            return;
+          }
+          reply({
+            ok: false,
+            error: MSG_PLAN_INTERNET,
+            code: "plan_unreachable",
+          });
+          return;
+        }
+
+        lastPlanCache = planRes;
+
+        const { plan, videosProcessedToday, limits } = planRes.plan;
+        const maxDayPre = limits.maxVideosPerDay;
+        if (maxDayPre !== -1 && videosProcessedToday >= maxDayPre) {
+          reply({
+            ok: false,
+            error: MSG_PLAN_DAILY,
+            code: "daily_limit",
+          });
+          return;
+        }
+
+        const customBannerN = Number(customBannerPairCount) || 0;
+        const customFtN = Number(customFulltextLineCount) || 0;
+        const customTotal = customBannerN + customFtN;
+        const maxH = limits.maxCustomHooks;
+        const maxCustomAllowed =
+          maxH === -1 ? Number.POSITIVE_INFINITY : Math.max(0, maxH);
+        if (customTotal > maxCustomAllowed) {
+          const pid = normalizeDesktopPlanId(plan);
+          if (pid === "starter") {
+            reply({
+              ok: false,
+              error: MSG_PLAN_STARTER_CUSTOM,
+              code: "starter_custom",
+            });
+            return;
+          }
+          if (pid === "free") {
+            reply({
+              ok: false,
+              error: MSG_PLAN_FREE_CUSTOM,
+              code: "free_custom_hooks",
+            });
+            return;
+          }
+          reply({
+            ok: false,
+            error: "Your plan limits custom hooks. Use presets or upgrade.",
+            code: "custom_hooks_limit",
+          });
+          return;
+        }
+
+        let bannerHookCount = 0;
+        let fulltextHookCount = 0;
+
+        if (overlayStyle === "banner" || overlayStyle === "mix") {
+          const l1 =
+            Array.isArray(bannerLine1Options) && bannerLine1Options.length > 0
+              ? bannerLine1Options
+              : null;
+          const l2 =
+            Array.isArray(bannerLine2Options) && bannerLine2Options.length > 0
+              ? bannerLine2Options
+              : null;
+          const fixedN = Array.isArray(bannerFixedHooks) ? bannerFixedHooks.length : 0;
+          const legacyN = Array.isArray(bannerHooks) ? bannerHooks.length : 0;
+          const strikeN = Array.isArray(bannerPriceStrikeHooks)
+            ? bannerPriceStrikeHooks.length
+            : 0;
+          if (l1 && l2) {
+            bannerHookCount = l1.length * l2.length + fixedN + strikeN;
+          } else if (legacyN > 0) {
+            bannerHookCount = legacyN + strikeN;
+          } else if (strikeN > 0) {
+            bannerHookCount = strikeN;
+          }
+        }
+        if (overlayStyle === "fulltext" || overlayStyle === "mix") {
+          fulltextHookCount = Array.isArray(fulltextHooks) ? fulltextHooks.length : 0;
+        }
+
+        let hookCount = 0;
+        if (overlayStyle === "banner") {
+          hookCount = bannerHookCount;
+        } else if (overlayStyle === "fulltext") {
+          hookCount = fulltextHookCount;
+        } else if (overlayStyle === "mix") {
+          if (bannerHookCount < 1) {
+            reply({
+              ok: false,
+              error:
+                "Mix mode needs banner hooks: pick top and bottom chips, add custom pairs, or enable a strike layout preset.",
+            });
+            return;
+          }
+          if (fulltextHookCount < 1) {
+            reply({
+              ok: false,
+              error: "Mix mode needs at least one full text hook.",
+            });
+            return;
+          }
+          hookCount = Math.max(bannerHookCount, fulltextHookCount);
+        }
+
+        if (hookCount < 1) {
+          reply({ ok: false, error: "Add at least one hook variant." });
+          return;
+        }
+
+        const sendProgress = (data) => {
+          if (wc && !wc.isDestroyed()) {
+            wc.send("batch:progress", data);
+          }
         };
-      }
-      if (pid === "free") {
-        return {
-          ok: false,
-          error: MSG_PLAN_FREE_CUSTOM,
-          code: "free_custom_hooks",
-        };
-      }
-      return {
-        ok: false,
-        error: "Your plan limits custom hooks. Use presets or upgrade.",
-        code: "custom_hooks_limit",
-      };
-    }
 
-    let bannerHookCount = 0;
-    let fulltextHookCount = 0;
+        const result = await runBatch({
+          authApi,
+          apiBase: API_BASE,
+          workerBase: WORKER_URL,
+          workerKey: WORKER_KEY || undefined,
+          mediaRoot: getMediaRoot(),
+          fileAbsolutePaths: filePaths,
+          overlayStyle,
+          bannerLine1Options,
+          bannerLine2Options,
+          bannerFixedHooks,
+          line1EmojiPool,
+          line2EmojiPool,
+          bannerHooks,
+          bannerPriceStrikeHooks,
+          fulltextHooks,
+          colorPresets,
+          onProgress: sendProgress,
+          onUsageUpdated: (inc) => {
+            if (
+              wc &&
+              !wc.isDestroyed() &&
+              inc &&
+              typeof inc.videosProcessedToday === "number"
+            ) {
+              wc.send("plan:snapshot", {
+                videosProcessedToday: inc.videosProcessedToday,
+              });
+            }
+            if (inc && typeof inc.videosProcessedToday === "number" && lastPlanCache?.ok) {
+              lastPlanCache = {
+                ...lastPlanCache,
+                plan: {
+                  ...lastPlanCache.plan,
+                  videosProcessedToday: inc.videosProcessedToday,
+                },
+              };
+            }
+          },
+        });
 
-    if (overlayStyle === "banner" || overlayStyle === "mix") {
-      const l1 =
-        Array.isArray(bannerLine1Options) && bannerLine1Options.length > 0
-          ? bannerLine1Options
-          : null;
-      const l2 =
-        Array.isArray(bannerLine2Options) && bannerLine2Options.length > 0
-          ? bannerLine2Options
-          : null;
-      const fixedN = Array.isArray(bannerFixedHooks) ? bannerFixedHooks.length : 0;
-      const legacyN = Array.isArray(bannerHooks) ? bannerHooks.length : 0;
-      const strikeN = Array.isArray(bannerPriceStrikeHooks)
-        ? bannerPriceStrikeHooks.length
-        : 0;
-      if (l1 && l2) {
-        bannerHookCount = l1.length * l2.length + fixedN + strikeN;
-      } else if (legacyN > 0) {
-        bannerHookCount = legacyN + strikeN;
-      } else if (strikeN > 0) {
-        bannerHookCount = strikeN;
-      }
-    }
-    if (overlayStyle === "fulltext" || overlayStyle === "mix") {
-      fulltextHookCount = Array.isArray(fulltextHooks) ? fulltextHooks.length : 0;
-    }
-
-    let hookCount = 0;
-    if (overlayStyle === "banner") {
-      hookCount = bannerHookCount;
-    } else if (overlayStyle === "fulltext") {
-      hookCount = fulltextHookCount;
-    } else if (overlayStyle === "mix") {
-      if (bannerHookCount < 1) {
-        return {
-          ok: false,
-          error:
-            "Mix mode needs banner hooks: pick top and bottom chips, add custom pairs, or enable a strike layout preset.",
-        };
-      }
-      if (fulltextHookCount < 1) {
-        return {
-          ok: false,
-          error: "Mix mode needs at least one full text hook.",
-        };
-      }
-      hookCount = Math.max(bannerHookCount, fulltextHookCount);
-    }
-
-    if (hookCount < 1) {
-      return { ok: false, error: "Add at least one hook variant." };
-    }
-
-    const send = (data) => {
-      if (mainWindow && !mainWindow.isDestroyed()) {
-        mainWindow.webContents.send("batch:progress", data);
-      }
-    };
-
-    const result = await runBatch({
-      authApi,
-      apiBase: API_BASE,
-      workerBase: WORKER_URL,
-      workerKey: WORKER_KEY || undefined,
-      mediaRoot: getMediaRoot(),
-      fileAbsolutePaths: filePaths,
-      overlayStyle,
-      bannerLine1Options,
-      bannerLine2Options,
-      bannerFixedHooks,
-      line1EmojiPool,
-      line2EmojiPool,
-      bannerHooks,
-      bannerPriceStrikeHooks,
-      fulltextHooks,
-      colorPresets,
-      onProgress: send,
-      onUsageUpdated: (inc) => {
-        if (
-          mainWindow &&
-          !mainWindow.isDestroyed() &&
-          inc &&
-          typeof inc.videosProcessedToday === "number"
-        ) {
-          mainWindow.webContents.send("plan:snapshot", {
-            videosProcessedToday: inc.videosProcessedToday,
+        if (result.ok && result.outputDir && result.batchId) {
+          pushRecentBatch({
+            id: result.batchId,
+            completedAt: Date.now(),
+            videoCount: result.processed ?? filePaths.length,
+            outputDir: result.outputDir,
           });
         }
-        if (inc && typeof inc.videosProcessedToday === "number" && lastPlanCache?.ok) {
-          lastPlanCache = {
-            ...lastPlanCache,
-            plan: {
-              ...lastPlanCache.plan,
-              videosProcessedToday: inc.videosProcessedToday,
-            },
-          };
-        }
-      },
-    });
 
-    if (result.ok && result.outputDir && result.batchId) {
-      pushRecentBatch({
-        id: result.batchId,
-        completedAt: Date.now(),
-        videoCount: result.processed ?? filePaths.length,
-        outputDir: result.outputDir,
-      });
-    }
-
-    return result;
+        reply(result);
+      } catch (err) {
+        console.error("[desktop] batch:process-run", err);
+        reply({
+          ok: false,
+          error: err instanceof Error ? err.message : String(err),
+        });
+      }
+    })();
   });
 
   registerAutoUpdate({ ipcMain, getMainWindow: () => mainWindow });

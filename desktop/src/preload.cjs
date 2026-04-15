@@ -28,7 +28,19 @@ contextBridge.exposeInMainWorld("bofbot", {
     } catch {
       return Promise.resolve({ ok: false, error: "Invalid batch payload." });
     }
-    return ipcRenderer.invoke("batch:process", plain);
+    // Use send + one-shot reply channel instead of invoke so the renderer can process
+    // batch:progress while the batch runs (invoke blocked that on macOS).
+    const requestId =
+      typeof globalThis.crypto?.randomUUID === "function"
+        ? globalThis.crypto.randomUUID()
+        : `${Date.now()}-${Math.random().toString(36).slice(2, 11)}`;
+    const doneChannel = `batch:process-done-${requestId}`;
+    return new Promise((resolve) => {
+      ipcRenderer.once(doneChannel, (_e, result) => {
+        resolve(result ?? { ok: false, error: "No result from main process." });
+      });
+      ipcRenderer.send("batch:process-run", { requestId, payload: plain });
+    });
   },
   onProgress: (fn) => {
     const channel = "batch:progress";
