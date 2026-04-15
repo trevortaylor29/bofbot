@@ -9,6 +9,10 @@ const { autoUpdater } = require("electron-updater");
 const GITHUB_OWNER = "trevortaylor29";
 const GITHUB_REPO = "bofbot";
 
+/** Shown in UI / IPC — never expose raw updater errors or GitHub URLs to users. */
+const USER_FACING_UPDATE_FAILURE =
+  "Update check failed. Download the latest version from bofbot.com";
+
 /** Missing latest-mac.yml / 404 on GitHub Releases — skip noise until Mac metadata is published. */
 function isIgnorableMacUpdaterError(e) {
   if (process.platform !== "darwin") return false;
@@ -75,12 +79,12 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
       if (isIgnorableMacUpdaterError(e)) {
         return { ok: false, skipped: true };
       }
-      const msg = e instanceof Error ? e.message : String(e);
+      console.error("[desktop] update:download", e);
       const win = getMainWindow();
       if (win?.webContents && !win.isDestroyed()) {
-        win.webContents.send("update-error", { message: msg });
+        win.webContents.send("update-error", { message: USER_FACING_UPDATE_FAILURE });
       }
-      return { ok: false, error: msg };
+      return { ok: false, error: USER_FACING_UPDATE_FAILURE };
     }
   });
 
@@ -102,8 +106,8 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
       if (isIgnorableMacUpdaterError(e)) {
         return { ok: true, updateAvailable: false, skipped: true };
       }
-      const msg = e instanceof Error ? e.message : String(e);
-      return { ok: false, error: msg };
+      console.error("[desktop] update:check", e);
+      return { ok: false, error: USER_FACING_UPDATE_FAILURE };
     }
   });
 

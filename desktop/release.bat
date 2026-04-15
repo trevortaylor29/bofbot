@@ -73,9 +73,10 @@ echo.
 echo Done. Release includes BofBot-Setup.exe + latest.yml ^(auto-update + website^).
 echo.
 echo Mac: run the GitHub Action "Build Mac DMG" ^(.github/workflows/build-mac.yml^) to produce
-echo       BofBot-Setup.dmg + latest-mac.yml ^(artifacts^). Upload both to this release for
-echo       Mac auto-update. For stable DMG URL in latest-mac.yml: on the Mac build output run
-echo       node scripts/patch-latest-mac-yml-stable.cjs %NEW_VER% then upload the patched yml.
+echo       BofBot-Setup.dmg + BofBot-Setup.zip + latest-mac.yml. Upload DMG, ZIP, and yml to this
+echo       release ^(ZIP is required for Mac auto-update; DMG is for first-time installs^).
+echo       For stable URLs in latest-mac.yml: node scripts/patch-latest-mac-yml-stable.cjs %NEW_VER%
+echo       then upload the patched yml plus BofBot-Setup.dmg and BofBot-Setup.zip.
 echo.
 echo Commit the bump: git add package.json ^&^& git commit -m "desktop v%NEW_VER%" ^&^& git push
 echo.

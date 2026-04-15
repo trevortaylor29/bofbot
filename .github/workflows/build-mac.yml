@@ -76,6 +76,14 @@ jobs:
           path: desktop/release/*.dmg
           if-no-files-found: error
 
+      - name: Upload ZIP artifact (Mac auto-update)
+        uses: actions/upload-artifact@v4
+        continue-on-error: true
+        with:
+          name: BofBot-Mac-ZIP
+          path: desktop/release/*.zip
+          if-no-files-found: warn
+
       - name: Upload latest-mac.yml (auto-update)
         uses: actions/upload-artifact@v4
         continue-on-error: true

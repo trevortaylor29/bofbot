@@ -1,5 +1,5 @@
 /**
- * Point release/latest-mac.yml at BofBot-Setup.dmg (stable URL) after Mac build.
+ * Point release/latest-mac.yml at stable artifact names (DMG for installs, ZIP for auto-update).
  * Run on the machine that produced release/latest-mac.yml (e.g. after electron-builder --mac).
  * Usage: node scripts/patch-latest-mac-yml-stable.cjs <version>   e.g. 0.2.7
  */
@@ -18,13 +18,27 @@ if (!fs.existsSync(ymlPath)) {
   process.exit(1);
 }
 
-const from = `BofBot-Setup-${version}.dmg`;
-const to = "BofBot-Setup.dmg";
+const fromDmg = `BofBot-Setup-${version}.dmg`;
+const toDmg = "BofBot-Setup.dmg";
+const fromZip = `BofBot-Setup-${version}.zip`;
+const toZip = "BofBot-Setup.zip";
+
 let s = fs.readFileSync(ymlPath, "utf8");
-if (!s.includes(from)) {
-  console.error(`Expected "${from}" in latest-mac.yml — check version and artifact name.`);
+let changed = false;
+if (s.includes(fromDmg)) {
+  s = s.split(fromDmg).join(toDmg);
+  changed = true;
+  console.log("Patched latest-mac.yml DMG ref →", toDmg);
+}
+if (s.includes(fromZip)) {
+  s = s.split(fromZip).join(toZip);
+  changed = true;
+  console.log("Patched latest-mac.yml ZIP ref →", toZip);
+}
+if (!changed) {
+  console.error(
+    `Expected "${fromDmg}" and/or "${fromZip}" in latest-mac.yml — check version and artifact names.`
+  );
   process.exit(1);
 }
-s = s.split(from).join(to);
 fs.writeFileSync(ymlPath, s);
-console.log("Patched latest-mac.yml →", to);
