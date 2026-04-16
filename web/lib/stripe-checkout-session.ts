@@ -137,7 +137,11 @@ export async function createStripeCheckoutUrlForUser(
   }
 
   try {
-    /** Promo field on Checkout; `bofbot_ref` cookie → `discounts` when Stripe finds an active matching promotion code. */
+    /**
+     * Stripe allows only one of `allow_promotion_codes` or `discounts` per session.
+     * `bofbot_ref` cookie + matching active promotion code → pre-apply via `discounts` (promotion_code id).
+     * Otherwise → manual promo entry on Checkout via `allow_promotion_codes`.
+     */
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -147,10 +151,9 @@ export async function createStripeCheckoutUrlForUser(
       client_reference_id: sessionUser.id,
       customer: userRow.stripeCustomerId ?? undefined,
       customer_email: userRow.stripeCustomerId ? undefined : sessionUser.email,
-      allow_promotion_codes: true,
       ...(promotionCodeId
         ? { discounts: [{ promotion_code: promotionCodeId }] }
-        : {}),
+        : { allow_promotion_codes: true }),
       metadata: sessionMetadata,
       subscription_data: {
         metadata: subscriptionMetadata,

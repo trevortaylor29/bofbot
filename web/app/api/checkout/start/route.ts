@@ -36,7 +36,7 @@ export async function GET(request: Request) {
     );
   }
 
-  // Session: `allow_promotion_codes` + optional `discounts` from `bofbot_ref` — see `createStripeCheckoutUrlForUser`.
+  // Session: `allow_promotion_codes` XOR `discounts` from `bofbot_ref` — see `createStripeCheckoutUrlForUser`.
   const result = await createStripeCheckoutUrlForUser(
     request,
     { id: session.user.id, email: session.user.email },
