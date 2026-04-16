@@ -1,0 +1,1 @@
+ALTER TABLE "users" ADD COLUMN "welcome_email_sent" boolean DEFAULT false NOT NULL;

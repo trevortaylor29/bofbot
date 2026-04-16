@@ -1,5 +1,6 @@
 import { relations } from "drizzle-orm";
 import {
+  boolean,
   date,
   integer,
   jsonb,
@@ -68,6 +69,8 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
     .notNull()
     .defaultNow(),
+  /** Set true by `scripts/welcome-email.mjs` after Resend welcome is sent. */
+  welcomeEmailSent: boolean("welcome_email_sent").notNull().default(false),
 });
 
 export const accounts = pgTable(

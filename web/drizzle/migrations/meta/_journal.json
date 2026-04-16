@@ -57,6 +57,13 @@
       "when": 1775777715221,
       "tag": "0007_user_daily_usage",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1776360995002,
+      "tag": "0008_welcome_email_sent",
+      "breakpoints": true
     }
   ]
 }

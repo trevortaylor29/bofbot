@@ -45,15 +45,19 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
   return { ok: true };
 }
 
-export function getClientIp(request: Request): string {
-  const xf = request.headers.get("x-forwarded-for");
+export function getClientIpFromHeaders(headers: Headers): string {
+  const xf = headers.get("x-forwarded-for");
   if (xf) {
     const first = xf.split(",")[0]?.trim();
     if (first) return first;
   }
-  const real = request.headers.get("x-real-ip")?.trim();
+  const real = headers.get("x-real-ip")?.trim();
   if (real) return real;
   return "unknown";
+}
+
+export function getClientIp(request: Request): string {
+  return getClientIpFromHeaders(request.headers);
 }
 
 /** UTC calendar day key for daily user caps. */
