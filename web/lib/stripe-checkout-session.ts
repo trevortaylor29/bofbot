@@ -5,11 +5,43 @@ import Stripe from "stripe";
 
 import { users } from "@/drizzle/schema";
 import {
+  affiliateRefStripeLookupVariants,
+  parseAffiliateRefFromCookieHeader,
+} from "@/lib/affiliate-ref";
+import {
   resolveStripePriceForCheckout,
   type CheckoutPaidPlan,
 } from "@/lib/checkout-plans";
 import { db } from "@/lib/db";
 import { getStripeOptional } from "@/lib/stripe";
+
+/**
+ * Resolves a customer-facing promotion code string to a Stripe promotion_code id
+ * for Checkout `discounts`. Tries case variants because Stripe stores codes as configured.
+ */
+async function resolvePromotionCodeId(
+  stripe: Stripe,
+  ref: string
+): Promise<string | null> {
+  for (const code of affiliateRefStripeLookupVariants(ref)) {
+    try {
+      const list = await stripe.promotionCodes.list({
+        code,
+        active: true,
+        limit: 1,
+      });
+      const first = list.data[0];
+      if (first?.id) return first.id;
+    } catch (e) {
+      console.warn(
+        "[checkout] promotionCodes.list failed for code variant",
+        code,
+        e
+      );
+    }
+  }
+  return null;
+}
 
 function appOrigin(request: Request): string {
   const env =
@@ -72,7 +104,40 @@ export async function createStripeCheckoutUrlForUser(
   const successUrl = `${origin}/dashboard?checkout=success`;
   const cancelUrl = `${origin}/?checkout=cancel#pricing`;
 
+  const affiliateRef = parseAffiliateRefFromCookieHeader(
+    request.headers.get("cookie")
+  );
+  let promotionCodeId: string | null = null;
+  if (affiliateRef) {
+    promotionCodeId = await resolvePromotionCodeId(stripe, affiliateRef);
+    if (!promotionCodeId) {
+      console.log("[checkout] no active Stripe promotion code for affiliate ref", {
+        affiliateRef,
+      });
+    }
+  }
+
+  const sessionMetadata: Record<string, string> = {
+    userId: sessionUser.id,
+    plan: planRaw,
+  };
+  if (affiliateRef) {
+    sessionMetadata.affiliate_ref = affiliateRef;
+    sessionMetadata.affiliate_applied = promotionCodeId
+      ? "promotion_code"
+      : "none";
+  }
+
+  const subscriptionMetadata: Record<string, string> = {
+    userId: sessionUser.id,
+    plan: planRaw,
+  };
+  if (promotionCodeId && affiliateRef) {
+    subscriptionMetadata.affiliate_ref = affiliateRef;
+  }
+
   try {
+    /** Promo field on Checkout; `bofbot_ref` cookie → `discounts` when Stripe finds an active matching promotion code. */
     const checkoutSession = await stripe.checkout.sessions.create({
       mode: "subscription",
       payment_method_types: ["card"],
@@ -82,15 +147,13 @@ export async function createStripeCheckoutUrlForUser(
       client_reference_id: sessionUser.id,
       customer: userRow.stripeCustomerId ?? undefined,
       customer_email: userRow.stripeCustomerId ? undefined : sessionUser.email,
-      metadata: {
-        userId: sessionUser.id,
-        plan: planRaw,
-      },
+      allow_promotion_codes: true,
+      ...(promotionCodeId
+        ? { discounts: [{ promotion_code: promotionCodeId }] }
+        : {}),
+      metadata: sessionMetadata,
       subscription_data: {
-        metadata: {
-          userId: sessionUser.id,
-          plan: planRaw,
-        },
+        metadata: subscriptionMetadata,
       },
     });
 

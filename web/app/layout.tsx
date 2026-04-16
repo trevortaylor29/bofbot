@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
+import { Suspense } from "react";
 import { Bricolage_Grotesque, Plus_Jakarta_Sans } from "next/font/google";
 
+import { AffiliateRefCapture } from "@/components/affiliate-ref-capture";
 import { Providers } from "@/components/providers";
 
 import "./globals.css";
@@ -36,7 +38,12 @@ export default function RootLayout({
       <body
         className={`${display.variable} ${jakarta.variable} min-h-screen bg-[#0a0a0a] font-jakarta text-zinc-100 antialiased`}
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <Suspense fallback={null}>
+            <AffiliateRefCapture />
+          </Suspense>
+          {children}
+        </Providers>
       </body>
     </html>
   );
