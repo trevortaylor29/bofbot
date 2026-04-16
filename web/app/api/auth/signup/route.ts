@@ -1,11 +1,16 @@
 import { hash } from "bcryptjs";
 import { eq } from "drizzle-orm";
 import { NextResponse } from "next/server";
+import { Resend } from "resend";
 
 import { users } from "@/drizzle/schema";
 import { isDbConnectionError } from "@/lib/db-errors";
 import { db } from "@/lib/db";
 import { getClientIp, rateLimit } from "@/lib/rate-limit";
+import {
+  buildWelcomePlainText,
+  welcomeEmailReplyTo,
+} from "@/lib/welcome-email-text";
 import { rateLimitResponse } from "@/lib/too-many-requests";
 
 const WINDOW_MS = 60 * 60 * 1000;
@@ -66,6 +71,34 @@ export async function POST(request: Request) {
         billingPeriodStart: now,
       })
       .returning({ id: users.id, email: users.email });
+
+    try {
+      const apiKey = process.env.RESEND_API_KEY?.trim();
+      const from = process.env.RESEND_FROM_EMAIL?.trim();
+      if (apiKey && from) {
+        const resend = new Resend(apiKey);
+        const { data, error } = await resend.emails.send({
+          from,
+          to: [created.email],
+          replyTo: welcomeEmailReplyTo(),
+          subject: "Welcome to BofBot",
+          text: buildWelcomePlainText(name),
+        });
+        if (!error && data?.id) {
+          await db
+            .update(users)
+            .set({ welcomeEmailSent: true, updatedAt: new Date() })
+            .where(eq(users.id, created.id));
+        } else {
+          console.warn(
+            "[signup] welcome email not sent:",
+            error?.message ?? "no Resend id"
+          );
+        }
+      }
+    } catch (e) {
+      console.warn("[signup] welcome email error:", e);
+    }
 
     return NextResponse.json(
       { id: created.id, email: created.email },

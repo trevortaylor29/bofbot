@@ -16,7 +16,7 @@
     "db:studio": "drizzle-kit studio",
     "stripe:seed": "node scripts/stripe-seed-products.mjs",
     "hero:posters": "node scripts/extract-hero-video-posters.mjs",
-    "welcome-email": "node scripts/welcome-email.mjs"
+    "welcome-email": "tsx scripts/welcome-email.ts"
   },
   "dependencies": {
     "@auth/drizzle-adapter": "^1.11.1",

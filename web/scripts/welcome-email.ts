@@ -1,12 +1,9 @@
 /**
- * Sends a one-time welcome email to users who signed up in the last 24 hours.
+ * Backup: welcome users from the last 24h who never got the email (e.g. Resend down at signup).
  *
- * Requires: DATABASE_URL, RESEND_API_KEY, RESEND_FROM_EMAIL (verified domain in Resend).
+ * From `web/`: npm run welcome-email
  *
- * Usage (from `web/`):
- *   node scripts/welcome-email.mjs
- *
- * Run after DB migration that adds `welcome_email_sent` (see `drizzle/migrations/0008_*`).
+ * Requires: DATABASE_URL, RESEND_API_KEY, RESEND_FROM_EMAIL (verified in Resend).
  */
 import dotenv from "dotenv";
 import path from "path";
@@ -14,6 +11,11 @@ import { fileURLToPath } from "url";
 
 import pg from "pg";
 import { Resend } from "resend";
+
+import {
+  buildWelcomePlainText,
+  welcomeEmailReplyTo,
+} from "../lib/welcome-email-text";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 dotenv.config({ path: path.join(__dirname, "..", ".env.local") });
@@ -24,39 +26,6 @@ const RESEND_API_KEY = process.env.RESEND_API_KEY?.trim();
 const RESEND_FROM =
   process.env.RESEND_FROM_EMAIL?.trim() ||
   "BofBot <onboarding@resend.dev>";
-const APP_ORIGIN = (
-  process.env.NEXT_PUBLIC_APP_URL ||
-  process.env.AUTH_URL ||
-  "https://bofbot.com"
-)
-  .trim()
-  .replace(/\/$/, "");
-
-function buildEmailHtml(name) {
-  const greeting = name ? `Hi ${name},` : "Hi there,";
-  return `<!DOCTYPE html>
-<html>
-<body style="font-family: system-ui, sans-serif; line-height: 1.6; color: #18181b;">
-  <p>${greeting}</p>
-  <p>Welcome to <strong>BofBot</strong> — we’re glad you’re here. You can add TikTok Shop-style overlays to your product videos right from your PC.</p>
-  <p><a href="${APP_ORIGIN}/dashboard" style="color: #e11d48;">Open your dashboard</a> to get started, or reply to this email if you have questions.</p>
-  <p>— The BofBot team</p>
-</body>
-</html>`;
-}
-
-function buildEmailText(name) {
-  const greeting = name ? `Hi ${name},` : "Hi there,";
-  return `${greeting}
-
-Welcome to BofBot — we're glad you're here. You can add TikTok Shop-style overlays to your product videos right from your PC.
-
-Open your dashboard: ${APP_ORIGIN}/dashboard
-
-Reply to this email if you have questions.
-
-— The BofBot team`;
-}
 
 async function main() {
   if (!DATABASE_URL) {
@@ -71,7 +40,11 @@ async function main() {
   const pool = new pg.Pool({ connectionString: DATABASE_URL });
   const resend = new Resend(RESEND_API_KEY);
 
-  const { rows } = await pool.query(
+  const { rows } = await pool.query<{
+    id: string;
+    email: string;
+    name: string | null;
+  }>(
     `SELECT id, email, name
      FROM users
      WHERE created_at > NOW() - INTERVAL '24 hours'
@@ -96,13 +69,13 @@ async function main() {
       const { data, error } = await resend.emails.send({
         from: RESEND_FROM,
         to: [email],
+        replyTo: welcomeEmailReplyTo(),
         subject: "Welcome to BofBot",
-        html: buildEmailHtml(name),
-        text: buildEmailText(name),
+        text: buildWelcomePlainText(name),
       });
 
       if (error) {
-        console.error(`[skip] ${email}: Resend —`, error.message || error);
+        console.error(`[skip] ${email}: Resend:`, error.message || error);
         failed += 1;
         continue;
       }
@@ -119,7 +92,7 @@ async function main() {
       console.log(`[ok] ${email}`);
       sent += 1;
     } catch (e) {
-      console.error(`[skip] ${email}:`, e?.message || e);
+      console.error(`[skip] ${email}:`, e instanceof Error ? e.message : e);
       failed += 1;
     }
   }
