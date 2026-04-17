@@ -13,6 +13,10 @@ Thanks for signing up for BofBot! If you need any help getting set up or have qu
 
 If you haven't downloaded the app yet: bofbot.com
 
+Setting up on Mac? Follow our step-by-step guide: bofbot.com/mac-help
+Need help getting videos from your phone to BofBot? Check out our setup guide: bofbot.com/setup-guide
+(We recommend google drive method)
+
 ${MD} Trev, BofBot`;
 }
 
