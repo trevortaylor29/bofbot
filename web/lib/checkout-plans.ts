@@ -57,3 +57,8 @@ export function resolveStripePriceForCheckout(plan: CheckoutPaidPlan): {
 export function isCheckoutPaidPlan(s: string): s is CheckoutPaidPlan {
   return s === "starter" || s === "pro";
 }
+
+/** Higher = more capable paid tier (for upgrade vs downgrade). */
+export function checkoutPaidPlanRank(plan: CheckoutPaidPlan): number {
+  return plan === "starter" ? 1 : 2;
+}

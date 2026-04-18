@@ -64,6 +64,13 @@
       "when": 1776360995002,
       "tag": "0008_welcome_email_sent",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1776481752576,
+      "tag": "0009_followup_sent",
+      "breakpoints": true
     }
   ]
 }

@@ -9,6 +9,8 @@ import {
   parseAffiliateRefFromCookieHeader,
 } from "@/lib/affiliate-ref";
 import {
+  checkoutPaidPlanRank,
+  isCheckoutPaidPlan,
   resolveStripePriceForCheckout,
   type CheckoutPaidPlan,
 } from "@/lib/checkout-plans";
@@ -41,6 +43,123 @@ async function resolvePromotionCodeId(
     }
   }
   return null;
+}
+
+const BLOCKING_SUB_STATUSES = new Set<string>([
+  "active",
+  "trialing",
+  "past_due",
+]);
+
+function planFromStripeSubscription(
+  sub: Stripe.Subscription,
+  starterPriceId: string | null,
+  proPriceId: string | null
+): CheckoutPaidPlan | null {
+  const meta = sub.metadata?.plan;
+  if (meta && isCheckoutPaidPlan(meta)) return meta;
+  const priceId = sub.items.data[0]?.price?.id;
+  if (priceId && starterPriceId && priceId === starterPriceId) return "starter";
+  if (priceId && proPriceId && priceId === proPriceId) return "pro";
+  return null;
+}
+
+async function createBillingPortalUrl(
+  stripe: Stripe,
+  customerId: string,
+  origin: string
+): Promise<string | null> {
+  const portal = await stripe.billingPortal.sessions.create({
+    customer: customerId,
+    return_url: `${origin}/dashboard`,
+  });
+  return portal.url;
+}
+
+/**
+ * If the customer has active-like subscription(s), either return a billing-portal URL
+ * (same/downgrade/unknown) or cancel subs so a new checkout can replace them (upgrade).
+ * Ensures we never stack multiple paid checkouts on one customer without clearing old subs first.
+ */
+async function resolveExistingSubscriptionsBeforeCheckout(
+  stripe: Stripe,
+  customerId: string,
+  requestedPlan: CheckoutPaidPlan,
+  starterPriceId: string | null,
+  proPriceId: string | null,
+  origin: string
+): Promise<{ proceed: true } | { proceed: false; url: string }> {
+  const list = await stripe.subscriptions.list({
+    customer: customerId,
+    status: "all",
+    limit: 40,
+  });
+
+  let blocking = list.data.filter((s) =>
+    BLOCKING_SUB_STATUSES.has(s.status)
+  );
+
+  if (blocking.length === 0) {
+    return { proceed: true };
+  }
+
+  if (blocking.length > 1) {
+    blocking = [...blocking].sort((a, b) => b.created - a.created);
+    for (let i = 1; i < blocking.length; i++) {
+      await stripe.subscriptions.cancel(blocking[i].id);
+    }
+    blocking = [blocking[0]];
+  }
+
+  let currentRank = 0;
+  let currentPlan: CheckoutPaidPlan | null = null;
+  for (const sub of blocking) {
+    const p = planFromStripeSubscription(sub, starterPriceId, proPriceId);
+    if (p) {
+      const r = checkoutPaidPlanRank(p);
+      if (r > currentRank) {
+        currentRank = r;
+        currentPlan = p;
+      }
+    }
+  }
+
+  const targetRank = checkoutPaidPlanRank(requestedPlan);
+
+  if (!currentPlan || currentRank === 0) {
+    const url = await createBillingPortalUrl(stripe, customerId, origin);
+    if (!url) {
+      throw new Error("Stripe did not return a billing portal URL");
+    }
+    console.log("[checkout] active subscription(s) with unknown plan; sending to portal", {
+      customerId,
+    });
+    return { proceed: false, url };
+  }
+
+  if (currentRank >= targetRank) {
+    const url = await createBillingPortalUrl(stripe, customerId, origin);
+    if (!url) {
+      throw new Error("Stripe did not return a billing portal URL");
+    }
+    console.log("[checkout] same or lower tier checkout blocked; sending to portal", {
+      customerId,
+      currentPlan,
+      requestedPlan,
+    });
+    return { proceed: false, url };
+  }
+
+  for (const sub of blocking) {
+    await stripe.subscriptions.cancel(sub.id);
+  }
+  console.log("[checkout] upgrade: canceled prior subscription(s)", {
+    customerId,
+    from: currentPlan,
+    to: requestedPlan,
+  });
+
+  return { proceed: true };
 }
 
 function appOrigin(request: Request): string {
@@ -103,6 +222,33 @@ export async function createStripeCheckoutUrlForUser(
   const origin = appOrigin(request);
   const successUrl = `${origin}/dashboard?checkout=success`;
   const cancelUrl = `${origin}/?checkout=cancel#pricing`;
+
+  const starterResolved = resolveStripePriceForCheckout("starter");
+  const proResolved = resolveStripePriceForCheckout("pro");
+
+  if (userRow.stripeCustomerId) {
+    try {
+      const gate = await resolveExistingSubscriptionsBeforeCheckout(
+        stripe,
+        userRow.stripeCustomerId,
+        planRaw,
+        starterResolved.priceId,
+        proResolved.priceId,
+        origin
+      );
+      if (!gate.proceed) {
+        return { ok: true, url: gate.url };
+      }
+    } catch (e) {
+      console.error("[checkout] subscription gate failed", e);
+      return {
+        ok: false,
+        status: 502,
+        error:
+          "Could not verify your subscription. Try again or open billing from your dashboard.",
+      };
+    }
+  }
 
   const affiliateRef = parseAffiliateRefFromCookieHeader(
     request.headers.get("cookie")

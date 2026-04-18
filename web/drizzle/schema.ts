@@ -69,8 +69,10 @@ export const users = pgTable("users", {
   updatedAt: timestamp("updated_at", { withTimezone: true, mode: "date" })
     .notNull()
     .defaultNow(),
-  /** Set true by `scripts/welcome-email.mjs` after Resend welcome is sent. */
+  /** Set true after Resend welcome (`scripts/welcome-email.ts` or signup). */
   welcomeEmailSent: boolean("welcome_email_sent").notNull().default(false),
+  /** Set true after a follow-up campaign email (`scripts/followup-*.ts`). */
+  followupSent: boolean("followup_sent").notNull().default(false),
 });
 
 export const accounts = pgTable(
