@@ -2,9 +2,17 @@
 export const BOFBOT_WINDOWS_INSTALLER_URL =
   "https://github.com/trevortaylor29/bofbot/releases/latest/download/BofBot-Setup.exe";
 
+/** Zip of the Windows .exe — fallback when SmartScreen/browser blocks the installer download. */
+export const BOFBOT_WINDOWS_INSTALLER_ZIP_URL =
+  "https://github.com/trevortaylor29/bofbot/releases/latest/download/BofBot-Setup-Windows.zip";
+
 /** macOS DMG from GitHub Releases (stable filename on each release). */
 export const BOFBOT_MAC_INSTALLER_URL =
   "https://github.com/trevortaylor29/bofbot/releases/latest/download/BofBot-Setup.dmg";
+
+/** macOS ZIP from GitHub Releases (stable filename; fallback if DMG download fails). */
+export const BOFBOT_MAC_INSTALLER_ZIP_URL =
+  "https://github.com/trevortaylor29/bofbot/releases/latest/download/BofBot-Setup.zip";
 
 export type InstallerOs = "windows" | "mac" | "unknown";
 

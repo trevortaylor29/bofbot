@@ -5,7 +5,9 @@ import { useEffect, useState } from "react";
 import { MacInstallHelpLink } from "@/components/mac-install-help-link";
 import {
   BOFBOT_MAC_INSTALLER_URL,
+  BOFBOT_MAC_INSTALLER_ZIP_URL,
   BOFBOT_WINDOWS_INSTALLER_URL,
+  BOFBOT_WINDOWS_INSTALLER_ZIP_URL,
   detectInstallerOs,
   type InstallerOs,
 } from "@/lib/bofbot-desktop-installer";
@@ -29,6 +31,17 @@ const heroPrimaryClass =
 const otherInstallerLinkClass =
   "text-xs font-medium text-zinc-400 underline-offset-2 transition hover:text-zinc-200 hover:underline";
 
+const zipFallbackLinkClass =
+  "text-[10px] leading-snug text-zinc-500 underline-offset-2 transition hover:text-zinc-300 hover:underline";
+
+function InstallerZipFallback({ href }: { href: string }) {
+  return (
+    <a href={href} className={zipFallbackLinkClass}>
+      Download not working? Try the zip version
+    </a>
+  );
+}
+
 export function BofBotInstallerDownloadNav() {
   const os = useInstallerOs();
   if (os === "windows") {
@@ -37,6 +50,7 @@ export function BofBotInstallerDownloadNav() {
         <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={navPrimaryClass}>
           Download for Windows
         </a>
+        <InstallerZipFallback href={BOFBOT_WINDOWS_INSTALLER_ZIP_URL} />
         <a
           href={BOFBOT_MAC_INSTALLER_URL}
           className={`${otherInstallerLinkClass} text-right`}
@@ -52,6 +66,7 @@ export function BofBotInstallerDownloadNav() {
         <a href={BOFBOT_MAC_INSTALLER_URL} className={navPrimaryClass}>
           Download for Mac
         </a>
+        <InstallerZipFallback href={BOFBOT_MAC_INSTALLER_ZIP_URL} />
         <a
           href={BOFBOT_WINDOWS_INSTALLER_URL}
           className={`${otherInstallerLinkClass} text-right`}
@@ -64,13 +79,19 @@ export function BofBotInstallerDownloadNav() {
   }
   return (
     <div className="flex shrink-0 flex-col items-end gap-2">
-      <div className="flex flex-wrap items-end justify-end gap-2">
-        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={navPrimaryClass}>
-          Download for Windows
-        </a>
-        <a href={BOFBOT_MAC_INSTALLER_URL} className={navPrimaryClass}>
-          Download for Mac
-        </a>
+      <div className="flex flex-wrap items-end justify-end gap-4">
+        <div className="flex flex-col items-end gap-1">
+          <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={navPrimaryClass}>
+            Download for Windows
+          </a>
+          <InstallerZipFallback href={BOFBOT_WINDOWS_INSTALLER_ZIP_URL} />
+        </div>
+        <div className="flex flex-col items-end gap-1">
+          <a href={BOFBOT_MAC_INSTALLER_URL} className={navPrimaryClass}>
+            Download for Mac
+          </a>
+          <InstallerZipFallback href={BOFBOT_MAC_INSTALLER_ZIP_URL} />
+        </div>
       </div>
       <MacInstallHelpLink align="right" />
     </div>
@@ -85,6 +106,7 @@ export function BofBotInstallerDownloadHero() {
         <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={heroPrimaryClass}>
           Download for Windows
         </a>
+        <InstallerZipFallback href={BOFBOT_WINDOWS_INSTALLER_ZIP_URL} />
         <a href={BOFBOT_MAC_INSTALLER_URL} className={otherInstallerLinkClass}>
           Mac version →
         </a>
@@ -97,6 +119,7 @@ export function BofBotInstallerDownloadHero() {
         <a href={BOFBOT_MAC_INSTALLER_URL} className={heroPrimaryClass}>
           Download for Mac
         </a>
+        <InstallerZipFallback href={BOFBOT_MAC_INSTALLER_ZIP_URL} />
         <a
           href={BOFBOT_WINDOWS_INSTALLER_URL}
           className={otherInstallerLinkClass}
@@ -109,13 +132,19 @@ export function BofBotInstallerDownloadHero() {
   }
   return (
     <div className="flex flex-col items-center gap-3">
-      <div className="flex flex-col items-center justify-center gap-3 sm:flex-row sm:items-start sm:gap-4">
-        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={heroPrimaryClass}>
-          Download for Windows
-        </a>
-        <a href={BOFBOT_MAC_INSTALLER_URL} className={heroPrimaryClass}>
-          Download for Mac
-        </a>
+      <div className="flex flex-col items-center justify-center gap-4 sm:flex-row sm:items-start sm:gap-8">
+        <div className="flex flex-col items-center gap-1.5">
+          <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={heroPrimaryClass}>
+            Download for Windows
+          </a>
+          <InstallerZipFallback href={BOFBOT_WINDOWS_INSTALLER_ZIP_URL} />
+        </div>
+        <div className="flex flex-col items-center gap-1.5">
+          <a href={BOFBOT_MAC_INSTALLER_URL} className={heroPrimaryClass}>
+            Download for Mac
+          </a>
+          <InstallerZipFallback href={BOFBOT_MAC_INSTALLER_ZIP_URL} />
+        </div>
       </div>
       <MacInstallHelpLink />
     </div>
@@ -134,6 +163,7 @@ export function BofBotInstallerDownloadFooter() {
         <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={footerPrimaryClass}>
           Download for Windows
         </a>
+        <InstallerZipFallback href={BOFBOT_WINDOWS_INSTALLER_ZIP_URL} />
         <a href={BOFBOT_MAC_INSTALLER_URL} className={footerOtherClass}>
           Mac version →
         </a>
@@ -146,6 +176,7 @@ export function BofBotInstallerDownloadFooter() {
         <a href={BOFBOT_MAC_INSTALLER_URL} className={footerPrimaryClass}>
           Download for Mac
         </a>
+        <InstallerZipFallback href={BOFBOT_MAC_INSTALLER_ZIP_URL} />
         <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={footerOtherClass}>
           Windows version →
         </a>
@@ -155,13 +186,19 @@ export function BofBotInstallerDownloadFooter() {
   }
   return (
     <span className="inline-flex flex-col items-center gap-2 sm:items-end">
-      <span className="flex flex-col items-center gap-2 sm:flex-row sm:gap-6">
-        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={footerPrimaryClass}>
-          Download for Windows
-        </a>
-        <a href={BOFBOT_MAC_INSTALLER_URL} className={footerPrimaryClass}>
-          Download for Mac
-        </a>
+      <span className="flex flex-col items-center gap-3 sm:flex-row sm:gap-8">
+        <span className="inline-flex flex-col items-center gap-1">
+          <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={footerPrimaryClass}>
+            Download for Windows
+          </a>
+          <InstallerZipFallback href={BOFBOT_WINDOWS_INSTALLER_ZIP_URL} />
+        </span>
+        <span className="inline-flex flex-col items-center gap-1">
+          <a href={BOFBOT_MAC_INSTALLER_URL} className={footerPrimaryClass}>
+            Download for Mac
+          </a>
+          <InstallerZipFallback href={BOFBOT_MAC_INSTALLER_ZIP_URL} />
+        </span>
       </span>
       <MacInstallHelpLink align="center" className="text-zinc-500 hover:text-zinc-300" />
     </span>
@@ -179,26 +216,34 @@ export function BofBotInstallerDownloadDashboard() {
   return (
     <div>
       {os === "unknown" ? (
-        <div className="flex w-full flex-col items-center gap-3 sm:w-auto sm:flex-row sm:justify-center sm:items-start">
-          <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={primaryClass}>
-            Download for Windows
-          </a>
-          <div className="flex w-full max-w-xs flex-col items-center gap-2 sm:w-auto">
+        <div className="flex w-full flex-col items-center gap-4 sm:w-auto sm:flex-row sm:justify-center sm:items-start">
+          <div className="flex w-full max-w-xs flex-col items-center gap-1.5 sm:w-auto">
+            <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={primaryClass}>
+              Download for Windows
+            </a>
+            <InstallerZipFallback href={BOFBOT_WINDOWS_INSTALLER_ZIP_URL} />
+          </div>
+          <div className="flex w-full max-w-xs flex-col items-center gap-1.5 sm:w-auto">
             <a href={BOFBOT_MAC_INSTALLER_URL} className={secondaryClass}>
               Download for Mac
             </a>
+            <InstallerZipFallback href={BOFBOT_MAC_INSTALLER_ZIP_URL} />
             <MacInstallHelpLink />
           </div>
         </div>
       ) : os === "windows" ? (
-        <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={primaryClass}>
-          Download for Windows
-        </a>
+        <div className="flex flex-col items-center gap-1.5">
+          <a href={BOFBOT_WINDOWS_INSTALLER_URL} className={primaryClass}>
+            Download for Windows
+          </a>
+          <InstallerZipFallback href={BOFBOT_WINDOWS_INSTALLER_ZIP_URL} />
+        </div>
       ) : (
         <div className="flex flex-col items-center gap-2">
           <a href={BOFBOT_MAC_INSTALLER_URL} className={primaryClass}>
             Download for Mac
           </a>
+          <InstallerZipFallback href={BOFBOT_MAC_INSTALLER_ZIP_URL} />
           <MacInstallHelpLink />
         </div>
       )}

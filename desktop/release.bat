@@ -7,7 +7,7 @@ REM   1) bump patch in package.json
 REM   2) build Windows installer (no electron-builder publish — we use gh)
 REM   3) copy to BofBot-Setup.exe for stable download URL
 REM   4) patch latest.yml to reference BofBot-Setup.exe (auto-updater)
-REM   5) gh release create + upload .exe + latest.yml
+REM   5) zip .exe for browsers that block downloads; gh release create + upload .exe + .zip + latest.yml
 REM
 REM Requires: Node/npm, GitHub CLI (gh) logged in (`gh auth login`).
 
@@ -46,6 +46,19 @@ copy /Y "%BUILT%" "%STABLE%" >nul
 echo Stable installer: %STABLE%
 echo.
 
+set "ZIP_WIN=release\BofBot-Setup-Windows.zip"
+powershell -NoProfile -Command "Compress-Archive -Path '%STABLE%' -DestinationPath '%ZIP_WIN%' -Force"
+if errorlevel 1 (
+  echo Failed to create %ZIP_WIN%
+  exit /b 1
+)
+if not exist "%ZIP_WIN%" (
+  echo Expected zip not found: %ZIP_WIN%
+  exit /b 1
+)
+echo Created %ZIP_WIN%
+echo.
+
 set "LATEST_YML=release\latest.yml"
 if not exist "%LATEST_YML%" (
   echo Missing %LATEST_YML% ^(electron-builder should emit this^).
@@ -63,14 +76,14 @@ if errorlevel 1 (
   exit /b 1
 )
 
-gh release create "v%NEW_VER%" "%STABLE%" "%LATEST_YML%" --title "BofBot %NEW_VER%" --generate-notes
+gh release create "v%NEW_VER%" "%STABLE%" "%ZIP_WIN%" "%LATEST_YML%" --title "BofBot %NEW_VER%" --generate-notes
 if errorlevel 1 (
   echo gh release create failed.
   exit /b 1
 )
 
 echo.
-echo Done. Release includes BofBot-Setup.exe + latest.yml ^(auto-update + website^).
+echo Done. Release includes BofBot-Setup.exe + BofBot-Setup-Windows.zip + latest.yml ^(auto-update + website^).
 echo.
 echo Mac: run the GitHub Action "Build Mac DMG" ^(.github/workflows/build-mac.yml^) to produce
 echo       BofBot-Setup.dmg + BofBot-Setup.zip + latest-mac.yml. Upload DMG, ZIP, and yml to this

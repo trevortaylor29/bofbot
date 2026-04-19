@@ -156,6 +156,10 @@ function defaultMediaRoot() {
   return path.join(app.getPath("userData"), "bofbot-media");
 }
 
+/** Shown when OS denies write access (EPERM / EACCES, etc.). */
+const MEDIA_ROOT_PERMISSION_ERROR =
+  "BofBot doesn't have permission to write to this folder. Try choosing a folder on your main drive, or right-click BofBot and run as administrator.";
+
 /**
  * Ensure folder exists and the app can write inside it (mkdir + probe file).
  * @param {string} rootAbs
@@ -171,6 +175,9 @@ function validateMediaRootWritable(rootAbs) {
   } catch (e) {
     const code = e && typeof e === "object" && "code" in e ? String(e.code) : "";
     const msg = e instanceof Error ? e.message : String(e);
+    if (code === "EPERM" || code === "EACCES") {
+      return { ok: false, error: MEDIA_ROOT_PERMISSION_ERROR };
+    }
     return {
       ok: false,
       error: code ? `${msg} (${code})` : msg,
@@ -477,28 +484,44 @@ function registerIpc({ ipcMain }) {
   ipcMain.handle("settings:getMediaRoot", async () => getMediaRoot());
 
   ipcMain.handle("settings:setMediaRoot", async (_e, p) => {
-    if (!p || typeof p !== "string") {
-      return { ok: false, error: "Invalid folder path." };
-    }
-    const trimmed = p.trim();
-    if (!trimmed) {
-      return { ok: false, error: "Invalid folder path." };
-    }
-    const resolved = path.resolve(trimmed);
-    const v = validateMediaRootWritable(resolved);
-    if (!v.ok) {
+    try {
+      if (!p || typeof p !== "string") {
+        return { ok: false, error: "Invalid folder path." };
+      }
+      const trimmed = p.trim();
+      if (!trimmed) {
+        return { ok: false, error: "Invalid folder path." };
+      }
+      const resolved = path.resolve(trimmed);
+      const v = validateMediaRootWritable(resolved);
+      if (!v.ok) {
+        return {
+          ok: false,
+          error:
+            v.error ||
+            "That folder is not writable. Choose another location or fix permissions.",
+        };
+      }
+      const s = readStore();
+      s.mediaRoot = resolved;
+      writeStore(s);
+      invalidateMediaRootCache();
+      return { ok: true };
+    } catch (e) {
+      const code =
+        e && typeof e === "object" && "code" in e ? String(e.code) : "";
+      console.error("[desktop] settings:setMediaRoot", e);
+      if (code === "EPERM" || code === "EACCES") {
+        return { ok: false, error: MEDIA_ROOT_PERMISSION_ERROR };
+      }
       return {
         ok: false,
         error:
-          v.error ||
-          "That folder is not writable. Choose another location or fix permissions.",
+          e instanceof Error
+            ? e.message
+            : "Could not save that folder. Try another location.",
       };
     }
-    const s = readStore();
-    s.mediaRoot = resolved;
-    writeStore(s);
-    invalidateMediaRootCache();
-    return { ok: true };
   });
 
   ipcMain.handle("shell:openDashboard", async () => {

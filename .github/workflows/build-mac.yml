@@ -1,9 +1,15 @@
-# Manual macOS desktop build (DMG). Does not publish to GitHub Releases.
-# After a Windows release, run this workflow and attach the artifact to the release if needed.
+# Manual macOS desktop build (DMG + ZIP). Optionally uploads assets to an existing GitHub release tag.
 name: Build Mac DMG
 
 on:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing GitHub release tag to attach DMG, ZIP, and latest-mac.yml (e.g. v0.2.12)"
+        required: true
+
+permissions:
+  contents: write
 
 jobs:
   mac:
@@ -78,11 +84,10 @@ jobs:
 
       - name: Upload ZIP artifact (Mac auto-update)
         uses: actions/upload-artifact@v4
-        continue-on-error: true
         with:
           name: BofBot-Mac-ZIP
           path: desktop/release/*.zip
-          if-no-files-found: warn
+          if-no-files-found: error
 
       - name: Upload latest-mac.yml (auto-update)
         uses: actions/upload-artifact@v4
@@ -91,3 +96,21 @@ jobs:
           name: BofBot-Mac-latest-mac-yml
           path: desktop/release/latest-mac.yml
           if-no-files-found: warn
+
+      - name: Upload DMG + ZIP (+ latest-mac.yml if present) to GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          TAG="${{ inputs.release_tag }}"
+          cd desktop
+          test -f release/BofBot-Setup.dmg
+          test -f release/BofBot-Setup.zip
+          gh release upload "$TAG" \
+            release/BofBot-Setup.dmg \
+            release/BofBot-Setup.zip \
+            --clobber --repo "${{ github.repository }}"
+          if [ -f release/latest-mac.yml ]; then
+            gh release upload "$TAG" release/latest-mac.yml \
+              --clobber --repo "${{ github.repository }}"
+          fi

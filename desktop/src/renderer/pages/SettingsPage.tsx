@@ -36,22 +36,40 @@ export function SettingsPage({ email, onBack, onLogout }: Props) {
     })();
   }, []);
 
+  const mediaFolderPermissionHint =
+    "BofBot doesn't have permission to write to this folder. Try choosing a folder on your main drive, or right-click BofBot and run as administrator.";
+
+  /** OneDrive / Dropbox / Google Drive paths often cause file locking or sync conflicts. */
+  function pathLooksLikeCloudSyncFolder(folderPath: string): boolean {
+    return /OneDrive|Dropbox|Google\s*Drive|GoogleDrive/i.test(folderPath);
+  }
+
   async function pickFolder() {
     setFolderError(null);
-    const p = await window.bofbot.pickOutputFolder();
-    if (!p) return;
-    const r = await window.bofbot.setMediaRoot(p);
-    if (!r.ok) {
-      setFolderError(
-        r.error ??
-          "That folder is not writable. Choose another location or fix permissions."
-      );
-      return;
+    try {
+      const p = await window.bofbot.pickOutputFolder();
+      if (!p) return;
+      if (pathLooksLikeCloudSyncFolder(p)) {
+        const proceed = window.confirm(
+          "This folder is inside a cloud sync service which can cause errors. We recommend using a local folder like C:\\BofBot instead.\n\nUse this folder anyway?"
+        );
+        if (!proceed) return;
+      }
+      const r = await window.bofbot.setMediaRoot(p);
+      if (!r.ok) {
+        setFolderError(
+          r.error ??
+            "That folder is not writable. Choose another location or fix permissions."
+        );
+        return;
+      }
+      const resolved = await window.bofbot.getMediaRoot();
+      setMediaRoot(resolved);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      setFolderError(mediaFolderPermissionHint);
     }
-    const resolved = await window.bofbot.getMediaRoot();
-    setMediaRoot(resolved);
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
   }
 
   async function openDashboard() {
