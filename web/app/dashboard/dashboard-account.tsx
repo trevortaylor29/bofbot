@@ -81,6 +81,35 @@ export function BillingPortalButton({
   );
 }
 
-export function DownloadBofBotCta() {
+export function DownloadBofBotCta({ canDownload }: { canDownload: boolean }) {
+  if (!canDownload) {
+    return (
+      <div className="space-y-4">
+        <p className="text-sm text-zinc-300">
+          Choose a plan to unlock the download
+        </p>
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+          <a
+            href="/api/checkout/start?plan=starter"
+            className="inline-flex w-full items-center justify-center rounded-xl border border-zinc-600 bg-zinc-900 px-4 py-3 text-sm font-semibold text-zinc-100 transition hover:border-zinc-500 hover:bg-zinc-800 sm:w-auto"
+          >
+            Starter — $19/mo
+          </a>
+          <a
+            href="/api/checkout/start?plan=pro"
+            className="inline-flex w-full items-center justify-center rounded-xl bg-[#F43F5E] px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-[#F43F5E]/25 ring-1 ring-white/10 transition hover:opacity-95 sm:w-auto"
+          >
+            Pro — unlimited
+          </a>
+        </div>
+        <Link
+          href="/#pricing"
+          className="inline-block text-sm font-medium text-[#F43F5E] hover:underline"
+        >
+          Compare plans on pricing →
+        </Link>
+      </div>
+    );
+  }
   return <BofBotInstallerDownloadDashboard />;
 }

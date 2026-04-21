@@ -5,7 +5,12 @@ import { auth } from "@/auth";
 import { users } from "@/drizzle/schema";
 import { db, isDatabaseConfigured } from "@/lib/db";
 import { isDbConnectionError } from "@/lib/db-errors";
-import { dailyVideoLimit, planDefinition, type UserPlan } from "@/lib/plans";
+import {
+  dailyVideoLimit,
+  isPaidPlanForDesktopDownload,
+  planDefinition,
+  type UserPlan,
+} from "@/lib/plans";
 
 import { BillingPortalButton, DownloadBofBotCta } from "./dashboard-account";
 
@@ -75,6 +80,7 @@ export default async function DashboardPage() {
   const def = planDefinition(plan);
   const limit = dailyVideoLimit(plan);
   const used = userRow!.videosProcessedThisPeriod;
+  const canDownloadDesktop = isPaidPlanForDesktopDownload(plan);
 
   return (
     <div className="mx-auto max-w-lg px-6 py-8">
@@ -136,7 +142,7 @@ export default async function DashboardPage() {
             Batch editing and rendering happen in BofBot for Mac and Windows.
           </p>
           <div className="mt-4">
-            <DownloadBofBotCta />
+            <DownloadBofBotCta canDownload={canDownloadDesktop} />
           </div>
         </div>
 

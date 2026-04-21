@@ -3,18 +3,16 @@
 import { motion, AnimatePresence } from "framer-motion";
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useState, type ReactNode } from "react";
+import { Suspense, useState, type ReactNode } from "react";
 
 import { BrandLogoMark } from "@/components/brand-mark";
 import {
   BofBotInstallerDownloadFooter,
+  BofBotInstallerDownloadGateProvider,
   BofBotInstallerDownloadHero,
-  BofBotInstallerDownloadNav,
 } from "@/components/bofbot-installer-download";
-import {
-  PricingCheckoutButton,
-  PricingFreeCta,
-} from "@/components/marketing/PricingCheckoutButton";
+import { PricingCheckoutButton } from "@/components/marketing/PricingCheckoutButton";
+import { SubscribeDownloadBanner } from "@/components/marketing/SubscribeDownloadBanner";
 import { planDefinition } from "@/lib/plans";
 import { WINDOWS_SMARTSCREEN_FAQ } from "@/lib/windows-install-security-note";
 
@@ -124,7 +122,6 @@ function Nav() {
               Log in
             </Link>
           )}
-          <BofBotInstallerDownloadNav />
         </div>
       </div>
     </header>
@@ -630,10 +627,10 @@ function FounderSection() {
   );
 }
 
-type PricingTier = "free" | "starter" | "pro";
+type PricingTier = "starter" | "pro";
 
 const PRICING_INCLUDES =
-  "Banner & fulltext overlays on every plan. Paid plans remove the watermark — Starter includes up to 5 custom hooks; Pro includes unlimited custom hooks.";
+  "Banner & fulltext overlays on every paid plan. Starter includes up to 5 custom hooks; Pro includes unlimited custom hooks. Subscribing unlocks the desktop app download.";
 
 function PricingSection() {
   const proDisplay = planDefinition("pro");
@@ -650,20 +647,6 @@ function PricingSection() {
     bullets: ReactNode[];
     excludedBullets?: string[];
   }[] = [
-    {
-      id: "free",
-      name: "Free",
-      priceMain: "$0",
-      priceSuffix: null,
-      popular: false,
-      cta: "Get started free",
-      bullets: ["3 videos per day", "Watermark on export"],
-      excludedBullets: [
-        "No watermark",
-        "Custom hooks",
-        "Priority processing",
-      ],
-    },
     {
       id: "starter",
       name: "Starter",
@@ -733,7 +716,7 @@ function PricingSection() {
           {...fadeUp}
           transition={{ ...fadeUp.transition, delay: 0.05 }}
         >
-          Start free. Upgrade when your catalog grows.
+          Starter or Pro — subscribe when your catalog is ready to scale.
         </motion.p>
         <motion.p
           className="mx-auto mt-3 max-w-lg text-center text-xs leading-relaxed text-zinc-500"
@@ -742,21 +725,18 @@ function PricingSection() {
         >
           {PRICING_INCLUDES}
         </motion.p>
-        <div className="mt-14 grid gap-6 lg:grid-cols-3 lg:items-stretch">
+        <div className="mt-14 grid gap-6 lg:grid-cols-2 lg:items-stretch lg:max-w-4xl lg:mx-auto">
           {tiers.map((plan, i) => {
             const popular = plan.popular;
-            const free = plan.id === "free";
             return (
               <motion.div
                 key={plan.id}
                 {...itemFade}
                 transition={{ ...itemFade.transition, delay: i * 0.08 }}
                 className={`relative flex flex-col rounded-2xl border ${
-                  free
-                    ? "border-zinc-800/60 bg-[#0c0c0c] p-6 text-zinc-500 opacity-[0.88] lg:opacity-90"
-                    : popular
-                      ? "border-[#F43F5E]/45 bg-zinc-900/80 p-7 shadow-[0_0_56px_-14px_rgba(244,63,94,0.25),0_0_40px_-12px_rgba(0,0,0,0.55)] ring-1 ring-[#F43F5E]/25 lg:z-10 lg:scale-[1.045]"
-                      : "border-white/[0.1] bg-[#111] p-6"
+                  popular
+                    ? "border-[#F43F5E]/45 bg-zinc-900/80 p-7 shadow-[0_0_56px_-14px_rgba(244,63,94,0.25),0_0_40px_-12px_rgba(0,0,0,0.55)] ring-1 ring-[#F43F5E]/25 lg:z-10 lg:scale-[1.045]"
+                    : "border-white/[0.1] bg-[#111] p-6"
                 }`}
               >
                 {popular && (
@@ -764,11 +744,7 @@ function PricingSection() {
                     Most popular
                   </span>
                 )}
-                <h3
-                  className={`font-display text-lg font-semibold ${
-                    free ? "text-zinc-400" : "text-white"
-                  }`}
-                >
+                <h3 className="font-display text-lg font-semibold text-white">
                   {plan.name}
                 </h3>
                 {plan.id === "pro" &&
@@ -799,11 +775,7 @@ function PricingSection() {
                 ) : (
                   <p
                     className={`mt-2 font-display text-3xl font-bold ${
-                      popular
-                        ? "text-[#F43F5E]"
-                        : free
-                          ? "text-zinc-300"
-                          : "text-white"
+                      popular ? "text-[#F43F5E]" : "text-white"
                     }`}
                     style={
                       popular
@@ -826,20 +798,10 @@ function PricingSection() {
                     )}
                   </p>
                 )}
-                <ul
-                  className={`mt-6 flex flex-1 flex-col gap-3 text-sm ${
-                    free ? "text-zinc-500" : "text-zinc-400"
-                  }`}
-                >
+                <ul className="mt-6 flex flex-1 flex-col gap-3 text-sm text-zinc-400">
                   {plan.bullets.map((line, j) => (
                     <li key={j} className="flex gap-2.5">
-                      <span
-                        className={
-                          free ? "text-zinc-600" : "text-zinc-500"
-                        }
-                      >
-                        ✓
-                      </span>
+                      <span className="text-zinc-500">✓</span>
                       <span className="leading-snug">{line}</span>
                     </li>
                   ))}
@@ -859,27 +821,17 @@ function PricingSection() {
                   ))}
                 </ul>
                 <div className="mt-8">
-                  {free ? (
-                    <PricingFreeCta
-                      className={
-                        "block w-full rounded-full border border-zinc-700/80 bg-zinc-900/40 py-3 text-center text-sm font-semibold text-zinc-300 transition-[transform,box-shadow,background-color,border-color] duration-200 ease-out hover:scale-[1.03] hover:border-zinc-600 hover:bg-zinc-900/70 hover:shadow-[0_0_20px_rgba(244,63,94,0.25)]"
-                      }
-                    >
-                      {plan.cta}
-                    </PricingFreeCta>
-                  ) : (
-                    <PricingCheckoutButton
-                      plan={plan.id === "starter" ? "starter" : "pro"}
-                      showCancelNote
-                      className={
-                        popular
-                          ? "block w-full rounded-full bg-gradient-to-r from-[#F43F5E] to-[#fb7185] py-3.5 text-center text-sm font-semibold text-white shadow-[0_0_32px_-8px_rgba(244,63,94,0.45)] ring-1 ring-white/15 transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.03] hover:shadow-[0_0_24px_rgba(244,63,94,0.5)] disabled:opacity-60"
-                          : "block w-full rounded-full border border-white/15 bg-white/[0.06] py-3 text-center text-sm font-semibold text-white transition-[transform,box-shadow,background-color] duration-200 ease-out hover:scale-[1.03] hover:bg-white/[0.1] hover:shadow-[0_0_20px_rgba(244,63,94,0.4)] disabled:opacity-60"
-                      }
-                    >
-                      {plan.cta}
-                    </PricingCheckoutButton>
-                  )}
+                  <PricingCheckoutButton
+                    plan={plan.id === "starter" ? "starter" : "pro"}
+                    showCancelNote
+                    className={
+                      popular
+                        ? "block w-full rounded-full bg-gradient-to-r from-[#F43F5E] to-[#fb7185] py-3.5 text-center text-sm font-semibold text-white shadow-[0_0_32px_-8px_rgba(244,63,94,0.45)] ring-1 ring-white/15 transition-[transform,box-shadow] duration-200 ease-out hover:scale-[1.03] hover:shadow-[0_0_24px_rgba(244,63,94,0.5)] disabled:opacity-60"
+                        : "block w-full rounded-full border border-white/15 bg-white/[0.06] py-3 text-center text-sm font-semibold text-white transition-[transform,box-shadow,background-color] duration-200 ease-out hover:scale-[1.03] hover:bg-white/[0.1] hover:shadow-[0_0_20px_rgba(244,63,94,0.4)] disabled:opacity-60"
+                    }
+                  >
+                    {plan.cta}
+                  </PricingCheckoutButton>
                 </div>
               </motion.div>
             );
@@ -890,7 +842,7 @@ function PricingSection() {
           {...fadeUp}
           transition={{ ...fadeUp.transition, delay: 0.12 }}
         >
-          All plans include local processing — your videos never leave your
+          Paid plans include local processing — your videos never leave your
           machine.
         </motion.p>
       </div>
@@ -903,11 +855,11 @@ type FaqItem = { q: string; a: string | ReactNode };
 const faqs: FaqItem[] = [
   {
     q: "Does it work on Mac?",
-    a: "Yes. BofBot runs locally on macOS and Windows — your videos are processed on your machine. The Mac build is less stable than Windows; we recommend installing the free version first to confirm everything works on your Mac before upgrading.",
+    a: "Yes. BofBot runs locally on macOS and Windows — your videos are processed on your machine. The Mac build is less stable than Windows; we recommend confirming everything works on your Mac with Starter or Pro before relying on it at scale.",
   },
   {
     q: "Is there a free trial?",
-    a: "The Free plan includes 3 videos per day so you can try the full pipeline before upgrading.",
+    a: "There is no separate trial app. Pick Starter or Pro to unlock the desktop download and your plan limits; you can manage or cancel your subscription from the billing portal after you subscribe.",
   },
   {
     q: "Do I need an internet connection?",
@@ -1059,24 +1011,29 @@ export function LandingPage() {
   return (
     <div className="relative min-h-screen bg-[#0a0a0a] font-jakarta text-zinc-100 antialiased">
       <NoiseOverlay />
-      <Nav />
-      <main>
-        <HeroSection />
+      <Suspense fallback={null}>
+        <SubscribeDownloadBanner />
+      </Suspense>
+      <BofBotInstallerDownloadGateProvider>
+        <Nav />
+        <main>
+          <HeroSection />
+          <SectionDivider />
+          <HowItWorksSection />
+          <SectionDivider />
+          <GetVideosToPcSection />
+          <SectionDivider />
+          <FeaturesSection />
+          <SectionDivider />
+          <FounderSection />
+          <SectionDivider />
+          <PricingSection />
+          <SectionDivider />
+          <FAQSection />
+        </main>
         <SectionDivider />
-        <HowItWorksSection />
-        <SectionDivider />
-        <GetVideosToPcSection />
-        <SectionDivider />
-        <FeaturesSection />
-        <SectionDivider />
-        <FounderSection />
-        <SectionDivider />
-        <PricingSection />
-        <SectionDivider />
-        <FAQSection />
-      </main>
-      <SectionDivider />
-      <Footer />
+        <Footer />
+      </BofBotInstallerDownloadGateProvider>
     </div>
   );
 }

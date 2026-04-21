@@ -79,6 +79,12 @@ export function apiPlanId(plan: UserPlan): "free" | "starter" | "pro" {
   return planIdForLookup(plan);
 }
 
+/** Desktop installer download is limited to paid tiers (Starter / Pro). */
+export function isPaidPlanForDesktopDownload(plan: UserPlan): boolean {
+  const id = apiPlanId(plan);
+  return id === "starter" || id === "pro";
+}
+
 /** Limits returned by `/api/user/plan` (matches product contract). */
 export type PlanLimitsApi = {
   maxVideosPerDay: number;
