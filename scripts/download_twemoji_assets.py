@@ -24,6 +24,7 @@ JOBS: list[tuple[str, list[str]]] = [
     ("1f62d.png", ["1f62d.png"]),
     ("1f6a8.png", ["1f6a8.png"]),
     ("2757.png", ["2757.png"]),
+    ("23f0.png", ["23f0.png"]),
 ]
 
 SIZE = (64, 64)

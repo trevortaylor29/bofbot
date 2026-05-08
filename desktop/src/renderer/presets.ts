@@ -53,18 +53,17 @@ export const BANNER_EMOJI_SUFFIX_POOL: string[] = [
 ];
 
 export const BANNER_LINE1_CHIPS: LineChip[] = [
-  { id: "l1-1", text: "TRIPLE DISCOUNT", bg_color: "#2a2a2a", text_color: "#FFFFFF" },
   { id: "l1-2", text: "40% OFF", bg_color: "#2a2a2a", text_color: "#FFFFFF" },
   { id: "l1-3", text: "LARGE SALE", bg_color: "#2a2a2a", text_color: "#FFFFFF" },
   { id: "l1-4", text: "50% OFF", bg_color: "#2a2a2a", text_color: "#FFFFFF" },
   { id: "l1-5", text: "2x DISCOUNT", bg_color: "#2a2a2a", text_color: "#FFFFFF" },
+  { id: "l1-6", text: "TRIPLE DISC0UNT", bg_color: "#2a2a2a", text_color: "#FFFFFF" },
 ];
 
 export const BANNER_LINE2_CHIPS: LineChip[] = [
-  { id: "l2-1", text: "4 HOURS LEFT", bg_color: "#FFFFFF", text_color: "#000000" },
   { id: "l2-2", text: "CHECK COUPONS", bg_color: "#FFFFFF", text_color: "#000000" },
-  { id: "l2-4", text: "ENDS TODAY", bg_color: "#FFFFFF", text_color: "#000000" },
   { id: "l2-5", text: "LAST CHANCE", bg_color: "#FFFFFF", text_color: "#000000" },
+  { id: "l2-6", text: "LIMITED \u23F0 LEFT", bg_color: "#FFFFFF", text_color: "#000000" },
 ];
 
 const BOTTOM_BAR = {

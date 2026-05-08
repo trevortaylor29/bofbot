@@ -128,6 +128,8 @@ def is_emoji_char(ch: str) -> bool:
         or (0x1F600 <= o <= 0x1F64F)
         or (0x1F680 <= o <= 0x1F6FF)
         or (0x1F1E6 <= o <= 0x1F1FF)
+        # Misc Technical clocks/watches/hourglasses (e.g. U+23F0 alarm clock).
+        or (0x231A <= o <= 0x23FA)
     )
 
 
