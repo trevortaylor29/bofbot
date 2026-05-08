@@ -974,6 +974,7 @@ function registerIpc({ ipcMain }) {
           fulltextHooks,
           colorPresets,
           ensureWorkerAlive,
+          getWorkerStderrTail,
           onProgress: sendProgress,
           onUsageUpdated: (inc) => {
             if (

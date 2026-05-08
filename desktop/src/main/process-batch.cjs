@@ -32,8 +32,11 @@ function safeBasename(name) {
  * @param {(usage: { videosProcessedToday?: number }) => void} [opts.onUsageUpdated] after each successful increment
  * @param {() => Promise<{ ok: true } | { ok: false, error: string }>} [opts.ensureWorkerAlive]
  *   Optional. When the local worker fetch throws (connection refused, abrupt exit), `runBatch`
- *   calls this to restart the worker and retries the request once. Without it, fetch failures
+ *   calls this to restart the worker and retries the request. Without it, fetch failures
  *   end the batch immediately as before.
+ * @param {() => string} [opts.getWorkerStderrTail]
+ *   Optional. Returns the last few KB of worker stderr; appended to the final error message
+ *   when retries fail so the user/log captures the real crash reason.
  */
 async function runBatch(opts) {
   const {
@@ -54,6 +57,7 @@ async function runBatch(opts) {
     fulltextHooks,
     colorPresets,
     ensureWorkerAlive,
+    getWorkerStderrTail,
     onProgress,
     onUsageUpdated,
   } = opts;
@@ -240,16 +244,21 @@ async function runBatch(opts) {
         };
       }
       /**
-       * Packaged Windows builds expose ECONNRESET briefly after respawn:
-       * Defender scans freshly-spawned bofbot-worker.exe, PyInstaller bootloader
-       * extraction, and Windows TIME_WAIT on port reuse can each cause the first
-       * post-restart request to RST. Retry with exponential backoff to absorb up
-       * to ~3s of warmup before giving up.
+       * Packaged Windows builds expose ECONNREFUSED / ECONNRESET briefly after respawn:
+       * the freshly-spawned worker may still be initializing, AV may be scanning, or the
+       * worker may have crashed again immediately. Retry with exponential backoff and
+       * re-call ensureWorkerAlive() before each attempt so a crashed-again worker gets
+       * respawned instead of us pinging a dead port for ~3s and giving up.
        */
-      const backoffsMs = [250, 750, 1750];
+      const backoffsMs = [250, 1000, 2500];
       let lastErr = err;
       for (const ms of backoffsMs) {
         await new Promise((resolve) => setTimeout(resolve, ms));
+        const alive = await ensureWorkerAlive();
+        if (!alive.ok) {
+          lastErr = new Error(alive.error || "worker not alive");
+          continue;
+        }
         try {
           wres = await sendOnce(true);
           lastErr = null;
@@ -259,11 +268,20 @@ async function runBatch(opts) {
         }
       }
       if (lastErr) {
+        const tail =
+          typeof getWorkerStderrTail === "function"
+            ? getWorkerStderrTail()
+                .trim()
+                .split(/\r?\n/)
+                .slice(-6)
+                .join("\n")
+            : "";
+        const detail = tail ? `\nLast worker output:\n${tail}` : "";
         return {
           ok: false,
           error: `Video worker stopped responding after restart (${describeFetchError(
             lastErr
-          )}).`,
+          )}).${detail}`,
           code: "worker_unreachable",
           processed,
         };
