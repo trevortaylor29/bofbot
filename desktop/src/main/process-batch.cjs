@@ -217,38 +217,56 @@ async function runBatch(opts) {
     };
 
     let wres;
-    let attempts = 0;
-    while (true) {
-      attempts += 1;
-      try {
-        wres = await sendOnce(attempts > 1);
-        break;
-      } catch (err) {
-        const errMsg = describeFetchError(err);
-        if (attempts > 1 || typeof ensureWorkerAlive !== "function") {
-          return {
-            ok: false,
-            error:
-              attempts > 1
-                ? `Video worker stopped responding after restart (${errMsg}).`
-                : "Video worker unreachable. Is the Python worker running?",
-            code: "worker_unreachable",
-            processed,
-          };
+    try {
+      wres = await sendOnce(false);
+    } catch (err) {
+      if (typeof ensureWorkerAlive !== "function") {
+        return {
+          ok: false,
+          error: "Video worker unreachable. Is the Python worker running?",
+          code: "worker_unreachable",
+          processed,
+        };
+      }
+      const r = await ensureWorkerAlive();
+      if (!r.ok) {
+        return {
+          ok: false,
+          error:
+            r.error ||
+            "Video worker stopped responding and could not be restarted.",
+          code: "worker_unreachable",
+          processed,
+        };
+      }
+      /**
+       * Packaged Windows builds expose ECONNRESET briefly after respawn:
+       * Defender scans freshly-spawned bofbot-worker.exe, PyInstaller bootloader
+       * extraction, and Windows TIME_WAIT on port reuse can each cause the first
+       * post-restart request to RST. Retry with exponential backoff to absorb up
+       * to ~3s of warmup before giving up.
+       */
+      const backoffsMs = [250, 750, 1750];
+      let lastErr = err;
+      for (const ms of backoffsMs) {
+        await new Promise((resolve) => setTimeout(resolve, ms));
+        try {
+          wres = await sendOnce(true);
+          lastErr = null;
+          break;
+        } catch (e) {
+          lastErr = e;
         }
-        const r = await ensureWorkerAlive();
-        if (!r.ok) {
-          return {
-            ok: false,
-            error:
-              r.error ||
-              "Video worker stopped responding and could not be restarted.",
-            code: "worker_unreachable",
-            processed,
-          };
-        }
-        // Worker just came back up — give the new socket a moment before reusing.
-        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
+      if (lastErr) {
+        return {
+          ok: false,
+          error: `Video worker stopped responding after restart (${describeFetchError(
+            lastErr
+          )}).`,
+          code: "worker_unreachable",
+          processed,
+        };
       }
     }
 
