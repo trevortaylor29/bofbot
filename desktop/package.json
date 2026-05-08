@@ -1,6 +1,6 @@
 {
   "name": "bofbot-desktop",
-  "version": "0.2.14",
+  "version": "0.2.15",
   "private": true,
   "description": "BofBot desktop — local UI + Python worker; auth/plan via production API (see src/config.ts)",
   "repository": {
