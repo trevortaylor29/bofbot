@@ -117,6 +117,29 @@ let workerProc = null;
 /** @type {ReturnType<createAuthApi> | null} */
 let authApi = null;
 
+/** Last ~4KB of worker stderr; surfaced to users when the worker dies. */
+const STDERR_RING_MAX = 4096;
+let workerStderrRing = "";
+/** Set in `workerProc.on('exit')`; helps debug repeated crashes. */
+let lastWorkerExit = null;
+/** Guard so concurrent fetches don't trigger overlapping respawns. */
+let respawning = false;
+
+/**
+ * @param {Buffer | string} chunk
+ */
+function appendWorkerStderr(chunk) {
+  if (!chunk) return;
+  workerStderrRing += typeof chunk === "string" ? chunk : chunk.toString("utf8");
+  if (workerStderrRing.length > STDERR_RING_MAX) {
+    workerStderrRing = workerStderrRing.slice(-STDERR_RING_MAX);
+  }
+}
+
+function getWorkerStderrTail() {
+  return workerStderrRing;
+}
+
 /** Last successful `getPlan()` result for desktop UI; cleared on logout. */
 let lastPlanCache = null;
 
@@ -347,7 +370,8 @@ function spawnWorker() {
     return spawn(workerExe, [], {
       cwd: path.dirname(workerExe),
       env,
-      stdio: "inherit",
+      // pipe stdout/stderr so `attachWorkerListeners` can capture stderr for crash diagnostics.
+      stdio: ["ignore", "pipe", "pipe"],
       windowsHide: true,
     });
   }
@@ -365,8 +389,44 @@ function spawnWorker() {
   return spawn(bin, args, {
     cwd: DEV_REPO_ROOT,
     env,
-    stdio: "inherit",
+    stdio: ["ignore", "pipe", "pipe"],
     windowsHide: true,
+  });
+}
+
+/**
+ * Wire piped stdio to (a) forward to host stdio so dev terminals still see logs and
+ * (b) capture stderr into a ring buffer for crash diagnostics.
+ */
+function attachWorkerListeners(proc) {
+  proc.stdout?.on("data", (d) => {
+    try {
+      process.stdout.write(d);
+    } catch {
+      /* ignore (no terminal in packaged builds) */
+    }
+  });
+  proc.stderr?.on("data", (d) => {
+    appendWorkerStderr(d);
+    try {
+      process.stderr.write(d);
+    } catch {
+      /* ignore */
+    }
+  });
+  proc.on("error", (err) => {
+    console.error("[desktop] worker spawn error:", err);
+  });
+  proc.on("exit", (code, signal) => {
+    lastWorkerExit = {
+      at: Date.now(),
+      code,
+      signal,
+      tail: getWorkerStderrTail(),
+    };
+    if (code !== 0 && code !== null) {
+      console.error("[desktop] worker exited", code, signal);
+    }
   });
 }
 
@@ -405,13 +465,88 @@ function waitForHttpOk(url, timeoutMs) {
 
 async function startWorkerOnly() {
   workerProc = spawnWorker();
-  workerProc.on("error", (err) => console.error("[desktop] worker spawn error:", err));
-  workerProc.on("exit", (code) => {
-    if (code !== 0 && code !== null) {
-      console.error("[desktop] worker exited", code);
+  attachWorkerListeners(workerProc);
+  await waitForHttpOk(getWorkerHealthUrl(), 90_000);
+}
+
+/**
+ * Quick GET /health used to detect a dead worker without paying the long /process timeout.
+ * @param {number} timeoutMs
+ * @returns {Promise<boolean>} true if /health responded 200
+ */
+function quickHealthCheck(timeoutMs = 1500) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const finish = (ok) => {
+      if (settled) return;
+      settled = true;
+      resolve(ok);
+    };
+    try {
+      const req = http.get(getWorkerHealthUrl(), (res) => {
+        res.resume();
+        finish(res.statusCode === 200);
+      });
+      req.on("error", () => finish(false));
+      req.setTimeout(timeoutMs, () => {
+        try {
+          req.destroy();
+        } catch {
+          /* ignore */
+        }
+        finish(false);
+      });
+    } catch {
+      finish(false);
     }
   });
-  await waitForHttpOk(getWorkerHealthUrl(), 90_000);
+}
+
+/**
+ * If /health is responding, returns ok. Otherwise, kills any stale worker, spawns a new
+ * one on the same port, and waits up to 30s for /health. Surfaces the last lines of
+ * stderr so callers can show a real diagnostic instead of "unreachable".
+ * @returns {Promise<{ ok: true } | { ok: false, error: string }>}
+ */
+async function ensureWorkerAlive() {
+  if (await quickHealthCheck()) return { ok: true };
+  if (respawning) {
+    return {
+      ok: false,
+      error: "Worker is restarting. Try again in a moment.",
+    };
+  }
+  respawning = true;
+  try {
+    console.warn("[desktop] worker not responding; restarting…");
+    killTree(workerProc);
+    workerProc = null;
+    workerStderrRing = "";
+
+    workerProc = spawnWorker();
+    attachWorkerListeners(workerProc);
+
+    try {
+      await waitForHttpOk(getWorkerHealthUrl(), 30_000);
+      console.warn("[desktop] worker restarted");
+      return { ok: true };
+    } catch (e) {
+      const tail = getWorkerStderrTail()
+        .trim()
+        .split(/\r?\n/)
+        .slice(-6)
+        .join("\n");
+      const base =
+        e instanceof Error ? e.message : "did not become ready in time";
+      const detail = tail ? `\nLast worker output:\n${tail}` : "";
+      return {
+        ok: false,
+        error: `Worker restart failed (${base}).${detail}`,
+      };
+    }
+  } finally {
+    respawning = false;
+  }
 }
 
 function createWindow() {
@@ -838,6 +973,7 @@ function registerIpc({ ipcMain }) {
           bannerPriceStrikeHooks,
           fulltextHooks,
           colorPresets,
+          ensureWorkerAlive,
           onProgress: sendProgress,
           onUsageUpdated: (inc) => {
             if (

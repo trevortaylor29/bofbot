@@ -30,6 +30,10 @@ function safeBasename(name) {
  * @param {string} opts.apiBase public site origin for user-facing URLs (no trailing slash)
  * @param {(ev: { current: number, total: number, fileName: string, phase: string }) => void} [opts.onProgress]
  * @param {(usage: { videosProcessedToday?: number }) => void} [opts.onUsageUpdated] after each successful increment
+ * @param {() => Promise<{ ok: true } | { ok: false, error: string }>} [opts.ensureWorkerAlive]
+ *   Optional. When the local worker fetch throws (connection refused, abrupt exit), `runBatch`
+ *   calls this to restart the worker and retries the request once. Without it, fetch failures
+ *   end the batch immediately as before.
  */
 async function runBatch(opts) {
   const {
@@ -49,6 +53,7 @@ async function runBatch(opts) {
     bannerPriceStrikeHooks,
     fulltextHooks,
     colorPresets,
+    ensureWorkerAlive,
     onProgress,
     onUsageUpdated,
   } = opts;
@@ -179,29 +184,83 @@ async function runBatch(opts) {
       phase: "processing",
     });
 
-    const headers = { "Content-Type": "application/json" };
-    if (workerKey) headers.Authorization = `Bearer ${workerKey}`;
+    const baseHeaders = { "Content-Type": "application/json" };
+    if (workerKey) baseHeaders.Authorization = `Bearer ${workerKey}`;
+    const processUrl = `${workerBase.replace(/\/$/, "")}/process`;
 
-    let wres;
-    try {
-      wres = await fetch(`${workerBase.replace(/\/$/, "")}/process`, {
+    /**
+     * After a worker respawn, undici's keep-alive pool still holds connections to the
+     * dead socket and silently fails the first reuse. On the retry we add `Connection: close`
+     * so the request opens a fresh socket instead of poisoning on a stale one.
+     */
+    const sendOnce = (forceFreshConn) => {
+      const headers = forceFreshConn
+        ? { ...baseHeaders, Connection: "close" }
+        : baseHeaders;
+      return fetch(processUrl, {
         method: "POST",
         headers,
         body: JSON.stringify(body),
+        ...(forceFreshConn ? { keepalive: false } : {}),
       });
-    } catch {
-      return {
-        ok: false,
-        error: "Video worker unreachable. Is the Python worker running?",
-        processed,
-      };
+    };
+
+    /** Surface the underlying cause when Node's `fetch` throws "fetch failed". */
+    const describeFetchError = (err) => {
+      if (!(err instanceof Error)) return String(err);
+      const cause = /** @type {any} */ (err).cause;
+      const causeMsg =
+        cause && (cause.code || cause.message)
+          ? cause.code || cause.message
+          : null;
+      return causeMsg ? `${err.message}: ${causeMsg}` : err.message;
+    };
+
+    let wres;
+    let attempts = 0;
+    while (true) {
+      attempts += 1;
+      try {
+        wres = await sendOnce(attempts > 1);
+        break;
+      } catch (err) {
+        const errMsg = describeFetchError(err);
+        if (attempts > 1 || typeof ensureWorkerAlive !== "function") {
+          return {
+            ok: false,
+            error:
+              attempts > 1
+                ? `Video worker stopped responding after restart (${errMsg}).`
+                : "Video worker unreachable. Is the Python worker running?",
+            code: "worker_unreachable",
+            processed,
+          };
+        }
+        const r = await ensureWorkerAlive();
+        if (!r.ok) {
+          return {
+            ok: false,
+            error:
+              r.error ||
+              "Video worker stopped responding and could not be restarted.",
+            code: "worker_unreachable",
+            processed,
+          };
+        }
+        // Worker just came back up — give the new socket a moment before reusing.
+        await new Promise((resolve) => setTimeout(resolve, 250));
+      }
     }
 
     if (!wres.ok) {
       const t = await wres.text().catch(() => "");
+      const tail = t.slice(0, 400);
       return {
         ok: false,
-        error: t.slice(0, 400) || `Worker HTTP ${wres.status}`,
+        error: `Worker rejected this clip (HTTP ${wres.status})${
+          tail ? `: ${tail}` : ""
+        }`,
+        code: "worker_http_error",
         processed,
       };
     }
