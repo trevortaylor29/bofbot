@@ -38,17 +38,22 @@ const providers: NextAuthConfig["providers"] = [
       if (!credentials?.email || !credentials?.password) {
         return null;
       }
+      const email = String(credentials.email).toLowerCase().trim();
       const h = await headers();
       const ip = getClientIpFromHeaders(h);
+      // If edge/runtime headers omit client IP, avoid one global "unknown" bucket.
+      const rlKey =
+        ip && ip !== "unknown"
+          ? `auth:credentials:ip:${ip}:email:${email}`
+          : `auth:credentials:email:${email}`;
       const rl = rateLimit(
-        `auth:credentials:${ip}`,
+        rlKey,
         CREDENTIALS_MAX_PER_HOUR,
         CREDENTIALS_WINDOW_MS
       );
       if (!rl.ok) {
         return null;
       }
-      const email = String(credentials.email).toLowerCase().trim();
       const user = await db.query.users.findFirst({
         where: eq(schema.users.email, email),
       });
