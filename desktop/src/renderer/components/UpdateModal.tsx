@@ -2,6 +2,8 @@ type Props = {
   newVersion: string;
   currentVersion: string;
   releaseNotes: string | null;
+  /** Mac builds aren't code-signed → open the releases page instead of in-app download. */
+  manualOnly?: boolean;
   busy: boolean;
   progressPercent: number | null;
   error: string | null;
@@ -13,13 +15,14 @@ export function UpdateModal({
   newVersion,
   currentVersion,
   releaseNotes,
+  manualOnly = false,
   busy,
   progressPercent,
   error,
   onUpdate,
   onNotNow,
 }: Props) {
-  const showProgress = busy && progressPercent !== null;
+  const showProgress = !manualOnly && busy && progressPercent !== null;
 
   return (
     <div
@@ -38,7 +41,9 @@ export function UpdateModal({
           Update available
         </h2>
         <p id="update-modal-desc" className="update-modal__body">
-          A new version of BofBot is available. Update now?
+          {manualOnly
+            ? "A new version of BofBot is available. Mac auto-update isn't supported yet — open the download page to grab the new installer."
+            : "A new version of BofBot is available. Update now?"}
         </p>
         <p className="update-modal__versions">
           <span className="update-modal__ver-muted">Current</span>{" "}
@@ -86,15 +91,19 @@ export function UpdateModal({
             onClick={onUpdate}
             disabled={busy}
           >
-            {busy ? "Updating…" : "Update"}
+            {manualOnly
+              ? "Open download page"
+              : busy
+                ? "Updating…"
+                : "Update"}
           </button>
           <button
             type="button"
             className="update-modal__btn update-modal__btn--ghost"
             onClick={onNotNow}
-            disabled={busy}
+            disabled={busy && !manualOnly}
           >
-            Not now
+            {manualOnly ? "Close" : "Not now"}
           </button>
         </div>
       </div>

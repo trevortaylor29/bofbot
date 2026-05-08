@@ -17,6 +17,7 @@ type UpdateOffer = {
   version: string;
   currentVersion: string;
   releaseNotes: string | null;
+  manualOnly: boolean;
 };
 
 export default function App() {
@@ -50,18 +51,44 @@ export default function App() {
   }, []);
 
   useEffect(() => {
+    let cancelled = false;
     (async () => {
-      const s = await window.bofbot.getSession();
-      const email = s?.user?.email ?? null;
+      // Hard boot timeout: if `getSession` (or anything else here) ever hangs or `window.bofbot`
+      // is missing because preload failed to load, we still drop the "Loading…" screen so the
+      // user can sign in / reset state instead of staring at a frozen splash forever.
+      const BOOT_TIMEOUT_MS = 8000;
+      let email: string | null = null;
+      try {
+        const sessionPromise = window.bofbot?.getSession?.();
+        if (!sessionPromise) throw new Error("desktop_bridge_unavailable");
+        const s = (await Promise.race([
+          sessionPromise,
+          new Promise<never>((_, rej) =>
+            setTimeout(() => rej(new Error("boot_timeout")), BOOT_TIMEOUT_MS),
+          ),
+        ])) as Awaited<ReturnType<typeof window.bofbot.getSession>>;
+        email = s?.user?.email ?? null;
+      } catch (e) {
+        console.error("[bofbot] boot getSession failed:", e);
+        email = null;
+      }
+      if (cancelled) return;
       setUserEmail(email);
       if (email) {
         setRoute("home");
-        await loadPlan();
+        try {
+          await loadPlan();
+        } catch (e) {
+          console.error("[bofbot] boot loadPlan failed:", e);
+        }
       } else {
         setRoute("welcome");
       }
-      setBooting(false);
+      if (!cancelled) setBooting(false);
     })();
+    return () => {
+      cancelled = true;
+    };
   }, [loadPlan]);
 
   useEffect(() => {
@@ -89,6 +116,7 @@ export default function App() {
         version: data.version,
         currentVersion: data.currentVersion ?? "",
         releaseNotes: rn.length > 0 ? rn : null,
+        manualOnly: data.manualOnly === true,
       });
       setUpdateModalOpen(true);
       setUpdateErr(null);
@@ -149,6 +177,7 @@ export default function App() {
             newVersion={updatePending.version}
             currentVersion={updatePending.currentVersion}
             releaseNotes={updatePending.releaseNotes}
+            manualOnly={updatePending.manualOnly}
             busy={updateBusy}
             progressPercent={updateProgressPercent}
             error={updateErr}
@@ -157,6 +186,15 @@ export default function App() {
               setUpdateBusy(true);
               setUpdateProgressPercent(0);
               const r = await window.bofbot.downloadAppUpdate();
+              // Mac (manualOnly) opens the GitHub releases page in the browser; close
+              // the modal immediately so the user isn't staring at "Updating…" forever.
+              if (r.ok && r.manualOnly === true) {
+                setUpdateBusy(false);
+                setUpdateProgressPercent(null);
+                setUpdateModalOpen(false);
+                setUpdatePending(null);
+                return;
+              }
               if (!r.ok) {
                 setUpdateBusy(false);
                 setUpdateProgressPercent(null);

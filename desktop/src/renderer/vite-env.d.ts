@@ -56,12 +56,14 @@ declare global {
         ok: boolean;
         error?: string;
         skipped?: boolean;
+        manualOnly?: boolean;
       }>;
       checkForUpdates: () => Promise<
         | {
             ok: true;
             updateAvailable: boolean;
             remoteVersion?: string;
+            manualOnly?: boolean;
             devMode?: boolean;
             skipped?: boolean;
           }
@@ -73,6 +75,7 @@ declare global {
           version: string;
           currentVersion: string;
           releaseNotes?: string | null;
+          manualOnly?: boolean;
         }) => void
       ) => () => void;
       onUpdateError: (fn: (data: { message: string }) => void) => () => void;

@@ -3,11 +3,20 @@
  * Renderer modal → download → quitAndInstall(true, true): NSIS /S + --force-run (no installer window, relaunch app).
  * Silent updates require a oneClick NSIS build (see package.json build.nsis).
  */
-const { app } = require("electron");
+const { app, shell } = require("electron");
 const { autoUpdater } = require("electron-updater");
 
 const GITHUB_OWNER = "trevortaylor29";
 const GITHUB_REPO = "bofbot";
+const RELEASES_PAGE_URL = `https://github.com/${GITHUB_OWNER}/${GITHUB_REPO}/releases/latest`;
+
+/**
+ * macOS auto-update via Squirrel.Mac requires Apple Developer code-signing, which our
+ * unsigned CI builds intentionally skip (CSC_IDENTITY_AUTO_DISCOVERY=false in build-mac.yml).
+ * On Mac we still detect new versions, but instead of downloading we open the GitHub
+ * releases page so the user can grab the new DMG manually.
+ */
+const IS_MAC_MANUAL = process.platform === "darwin";
 
 /** Shown in UI / IPC — never expose raw updater errors or GitHub URLs to users. */
 const USER_FACING_UPDATE_FAILURE =
@@ -70,6 +79,17 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
     if (!app.isPackaged) {
       return { ok: false, error: "Updates only apply to the installed app." };
     }
+    if (IS_MAC_MANUAL) {
+      // No Apple signing → Squirrel.Mac can't verify the new build. Open the releases
+      // page so the user can grab the new DMG; the renderer treats this as a "success"
+      // and dismisses the modal.
+      try {
+        await shell.openExternal(RELEASES_PAGE_URL);
+      } catch (e) {
+        console.error("[desktop] open releases page failed:", e);
+      }
+      return { ok: true, manualOnly: true };
+    }
     userRequestedInstall = true;
     try {
       await autoUpdater.downloadUpdate();
@@ -97,10 +117,34 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
       if (result == null) {
         return { ok: true, updateAvailable: false };
       }
+      const remoteVersion = result.updateInfo?.version;
+      const current = app.getVersion();
+      // On Mac, electron-updater's `isUpdateAvailable` can stall on unsigned builds. Trust
+      // a strict version difference instead so the user always gets a clear answer + modal.
+      const updateAvailable =
+        result.isUpdateAvailable === true ||
+        (IS_MAC_MANUAL && !!remoteVersion && remoteVersion !== current);
+
+      // Make sure the renderer always sees `update-available` when we say there is one;
+      // electron-updater sometimes won't emit on its own when the platform path skips
+      // signature verification.
+      if (updateAvailable && IS_MAC_MANUAL) {
+        const win = getMainWindow();
+        if (win?.webContents && !win.isDestroyed()) {
+          win.webContents.send("update-available", {
+            version: remoteVersion ?? "",
+            currentVersion: current,
+            releaseNotes: formatReleaseNotesPlain(result.updateInfo ?? {}),
+            manualOnly: true,
+          });
+        }
+      }
+
       return {
         ok: true,
-        updateAvailable: result.isUpdateAvailable === true,
-        remoteVersion: result.updateInfo?.version,
+        updateAvailable,
+        remoteVersion,
+        manualOnly: updateAvailable && IS_MAC_MANUAL ? true : undefined,
       };
     } catch (e) {
       if (isIgnorableMacUpdaterError(e)) {
@@ -138,6 +182,7 @@ function registerAutoUpdate({ ipcMain, getMainWindow }) {
         version: info.version,
         currentVersion: app.getVersion(),
         releaseNotes: formatReleaseNotesPlain(info),
+        manualOnly: IS_MAC_MANUAL,
       });
     }
   });
