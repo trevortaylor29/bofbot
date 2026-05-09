@@ -3,6 +3,15 @@
  * Flow: GET csrf → POST callback/credentials → reuse Cookie on /api/auth/session, /api/user/*
  */
 
+/** Recognizable UA so server logs can distinguish desktop login attempts from web browsers. */
+let DESKTOP_UA = "BofBot-Desktop";
+try {
+  const v = require("electron").app?.getVersion?.();
+  if (v) DESKTOP_UA = `BofBot-Desktop/${v}`;
+} catch {
+  /* electron not available (tests) — fall back to base UA */
+}
+
 /**
  * @param {string} setCookieLine
  * @param {Record<string, string>} jar
@@ -90,6 +99,7 @@ function createAuthApi({ apiBase, storePath, fs }) {
   async function login(email, password) {
     const csrfRes = await fetch(`${apiBase}/api/auth/csrf`, {
       redirect: "manual",
+      headers: { "User-Agent": DESKTOP_UA },
     });
     await mergeSetCookiesFromResponse(csrfRes, jar);
     let csrfToken;
@@ -116,6 +126,7 @@ function createAuthApi({ apiBase, storePath, fs }) {
       redirect: "manual",
       headers: {
         "Content-Type": "application/x-www-form-urlencoded",
+        "User-Agent": DESKTOP_UA,
         Cookie: jarToCookieHeader(jar),
       },
       body,
@@ -127,6 +138,7 @@ function createAuthApi({ apiBase, storePath, fs }) {
         redirect: "manual",
         headers: {
           "Content-Type": "application/x-www-form-urlencoded",
+          "User-Agent": DESKTOP_UA,
           Cookie: jarToCookieHeader(jar),
         },
         body,
@@ -153,7 +165,12 @@ function createAuthApi({ apiBase, storePath, fs }) {
     if (session?.user) {
       return { ok: true, user: session.user };
     }
-    return { ok: false, error: "Sign-in failed. Check API URL and credentials." };
+    // HTTP status surfaces in support emails so we can distinguish "302 → no session"
+    // from a 5xx without leaking endpoint URLs to end users.
+    return {
+      ok: false,
+      error: `Sign-in failed (HTTP ${loginRes.status}). Check your email and password.`,
+    };
   }
 
   function logout() {
@@ -171,7 +188,7 @@ function createAuthApi({ apiBase, storePath, fs }) {
     const h = jarToCookieHeader(jar);
     if (!h) return null;
     const res = await fetch(`${apiBase}/api/auth/session`, {
-      headers: { Cookie: h },
+      headers: { Cookie: h, "User-Agent": DESKTOP_UA },
     });
     if (!res.ok) return null;
     try {
@@ -187,7 +204,7 @@ function createAuthApi({ apiBase, storePath, fs }) {
     const h = jarToCookieHeader(jar);
     if (!h) return { ok: false, error: "not_signed_in" };
     const res = await fetch(`${apiBase}/api/user/plan`, {
-      headers: { Cookie: h },
+      headers: { Cookie: h, "User-Agent": DESKTOP_UA },
     });
     if (res.status === 401) {
       return { ok: false, error: "not_signed_in" };
@@ -209,6 +226,7 @@ function createAuthApi({ apiBase, storePath, fs }) {
       headers: {
         Cookie: h,
         "Content-Type": "application/json",
+        "User-Agent": DESKTOP_UA,
       },
       body: JSON.stringify({ amount }),
     });
