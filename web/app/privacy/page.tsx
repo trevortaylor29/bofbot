@@ -22,6 +22,12 @@ export default function PrivacyPage() {
 
       <h2>1. Information we collect</h2>
       <p>
+        <em>
+          Section 1 describes information collected through our website and desktop application.
+          For information specific to the BofBot iOS app, see Section 2.
+        </em>
+      </p>
+      <p>
         <strong>Account information.</strong> When you register or log in, we collect your email
         address and credentials (e.g., password hash) necessary to operate your account.
       </p>
@@ -71,8 +77,9 @@ export default function PrivacyPage() {
         </li>
         <li>
           <strong>Subscriptions.</strong> Managed entirely by Apple via the App Store. We never
-          see your payment information. Apple provides us with anonymous receipt data confirming
-          an active subscription.
+          see your payment information. Apple provides us with on-device receipt data containing
+          a transaction ID and product identifier — used only to verify your active subscription
+          status. This data does not contain your name, email, or payment details.
         </li>
         <li>
           <strong>Camera Roll access.</strong> With your permission, the app reads the videos
@@ -169,8 +176,8 @@ export default function PrivacyPage() {
       <h2>12. Changes to this policy</h2>
       <p>
         We may update this Privacy Policy from time to time. We will post the new version on this
-        page and update the &quot;Last updated&quot; date. For material changes, we may provide
-        additional notice (e.g., email or in-app).
+        page and update the &quot;Last updated&quot; date. For material changes, we will provide
+        additional notice through the app, by email, or via a prominent notice on our website.
       </p>
 
       <h2>13. Contact</h2>
