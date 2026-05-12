@@ -203,8 +203,11 @@ export default function TermsPage() {
 
       <h2>14. Contact</h2>
       <p>
-        For questions about these Terms, contact us through the channels listed on our website or
-        your account dashboard.
+        For questions about these Terms, email us at{" "}
+        <a href="mailto:aightwhatev@gmail.com?subject=BofBot%20Terms%20Question">
+          aightwhatev@gmail.com
+        </a>{" "}
+        or use our contact form at <a href="/contact">bofbot.com/contact</a>.
       </p>
     </LegalPageShell>
   );
