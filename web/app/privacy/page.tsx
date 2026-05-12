@@ -5,10 +5,10 @@ import { LegalPageShell } from "@/components/marketing/LegalPageShell";
 export const metadata: Metadata = {
   title: "Privacy Policy — BofBot",
   description:
-    "How BofBot collects, uses, and protects your information — email, payments via Stripe, and local video processing.",
+    "How BofBot collects, uses, and protects your information across the website, desktop app, and iOS app — including local video processing and Sign in with Apple.",
 };
 
-const LAST_UPDATED = "April 8, 2026";
+const LAST_UPDATED = "May 12, 2026";
 
 export default function PrivacyPage() {
   return (
@@ -50,7 +50,44 @@ export default function PrivacyPage() {
         subscription verification) as described below.
       </p>
 
-      <h2>2. How we use information</h2>
+      <h2>2. BofBot iOS App</h2>
+      <p>
+        The BofBot iOS app is a tool for processing your own videos on your iPhone. It operates
+        fully on-device:
+      </p>
+      <ul>
+        <li>
+          <strong>Videos.</strong> We do not collect, transmit, or store your videos. All
+          processing happens locally on your device.
+        </li>
+        <li>
+          <strong>No backend for user data.</strong> The iOS app does not use a BofBot server
+          or database to store your account or content.
+        </li>
+        <li>
+          <strong>Sign in with Apple.</strong> We receive a stable anonymous user identifier from
+          Apple to maintain your local session. We do not receive your real name or email unless
+          you choose to share them.
+        </li>
+        <li>
+          <strong>Subscriptions.</strong> Managed entirely by Apple via the App Store. We never
+          see your payment information. Apple provides us with anonymous receipt data confirming
+          an active subscription.
+        </li>
+        <li>
+          <strong>Camera Roll access.</strong> With your permission, the app reads the videos
+          you select and writes processed videos back. Access is limited to what you explicitly
+          select.
+        </li>
+        <li>
+          <strong>No third-party analytics, ad networks, or trackers.</strong>
+        </li>
+      </ul>
+      <p>
+        You may sign out, uninstall the app, or revoke permissions at any time via iOS Settings.
+      </p>
+
+      <h2>3. How we use information</h2>
       <ul>
         <li>Provide, maintain, and improve the Service;</li>
         <li>Create and manage your account and authenticate you;</li>
@@ -61,7 +98,7 @@ export default function PrivacyPage() {
         <li>Send service-related messages (we do not sell your email for third-party marketing).</li>
       </ul>
 
-      <h2>3. How we share information</h2>
+      <h2>4. How we share information</h2>
       <p>We may share information with:</p>
       <ul>
         <li>
@@ -81,26 +118,26 @@ export default function PrivacyPage() {
       </ul>
       <p>We do not sell your personal information as that term is defined under applicable U.S. state laws.</p>
 
-      <h2>4. Cookies and similar technologies</h2>
+      <h2>5. Cookies and similar technologies</h2>
       <p>
         Our website may use cookies or similar technologies for session management, security, and
         analytics. You can control cookies through your browser settings.
       </p>
 
-      <h2>5. Data retention</h2>
+      <h2>6. Data retention</h2>
       <p>
         We retain account and billing-related information for as long as your account is active and
         for a reasonable period afterward to resolve disputes, enforce agreements, and meet legal
         requirements. Stripe retains payment data according to its policies.
       </p>
 
-      <h2>6. Security</h2>
+      <h2>7. Security</h2>
       <p>
         We use commercially reasonable technical and organizational measures to protect information.
         No method of transmission or storage is 100% secure; we cannot guarantee absolute security.
       </p>
 
-      <h2>7. Your rights and choices</h2>
+      <h2>8. Your rights and choices</h2>
       <p>
         Depending on where you live, you may have rights to access, correct, delete, or export
         certain personal data, or to object to or restrict certain processing. To exercise these
@@ -108,35 +145,35 @@ export default function PrivacyPage() {
         emails using the link in those messages.
       </p>
 
-      <h2>8. Children</h2>
+      <h2>9. Children</h2>
       <p>
         The Service is not directed to children under 13 (or 16 where applicable). We do not
         knowingly collect personal information from children. If you believe we have, contact us and
         we will delete it.
       </p>
 
-      <h2>9. International users</h2>
+      <h2>10. International users</h2>
       <p>
         If you access the Service from outside the United States, your information may be
         processed in the United States or other countries where we or our providers operate, which
         may have different data protection laws than your country.
       </p>
 
-      <h2>10. Third-party services and TikTok</h2>
+      <h2>11. Third-party services and TikTok</h2>
       <p>
         Our Service may help you prepare content for platforms such as TikTok.{" "}
         <strong>We are not responsible for TikTok&apos;s or any other platform&apos;s privacy practices
         or enforcement actions.</strong> Review each platform&apos;s policies before posting.
       </p>
 
-      <h2>11. Changes to this policy</h2>
+      <h2>12. Changes to this policy</h2>
       <p>
         We may update this Privacy Policy from time to time. We will post the new version on this
         page and update the &quot;Last updated&quot; date. For material changes, we may provide
         additional notice (e.g., email or in-app).
       </p>
 
-      <h2>12. Contact</h2>
+      <h2>13. Contact</h2>
       <p>
         For privacy questions or requests, contact us through the channels listed on our website or
         your account dashboard.
