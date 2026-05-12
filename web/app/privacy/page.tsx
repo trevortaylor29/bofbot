@@ -175,8 +175,14 @@ export default function PrivacyPage() {
 
       <h2>13. Contact</h2>
       <p>
-        For privacy questions or requests, contact us through the channels listed on our website or
-        your account dashboard.
+        For privacy questions or requests (including data access, correction, or deletion),
+        email us at{" "}
+        <a href="mailto:aightwhatev@gmail.com?subject=BofBot%20Privacy%20Request">
+          aightwhatev@gmail.com
+        </a>{" "}
+        or use our contact form at{" "}
+        <a href="/contact">bofbot.com/contact</a>. We respond to verified requests within a
+        reasonable time.
       </p>
     </LegalPageShell>
   );
