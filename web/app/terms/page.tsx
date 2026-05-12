@@ -5,10 +5,10 @@ import { LegalPageShell } from "@/components/marketing/LegalPageShell";
 export const metadata: Metadata = {
   title: "Terms of Service — BofBot",
   description:
-    "Terms of Service for BofBot — subscriptions, acceptable use, disclaimers, and limitations.",
+    "Terms of Service for BofBot — covering the website, desktop app, and iOS app, including Apple App Store subscriptions, acceptable use, disclaimers, and limitations.",
 };
 
-const LAST_UPDATED = "April 8, 2026";
+const LAST_UPDATED = "May 12, 2026";
 
 export default function TermsPage() {
   return (
@@ -45,7 +45,60 @@ export default function TermsPage() {
         with TikTok, TikTok Shop, and any other platform rules.
       </p>
 
-      <h2>4. Third-party platforms (including TikTok)</h2>
+      <h2>4. BofBot iOS App</h2>
+      <p>
+        Use of the BofBot iOS app is also governed by Apple&apos;s standard End User License
+        Agreement (EULA), available at{" "}
+        <a
+          href="https://www.apple.com/legal/internet-services/itunes/dev/stdeula/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          apple.com/legal/internet-services/itunes/dev/stdeula
+        </a>
+        . In the event of any conflict between these Terms and Apple&apos;s EULA with respect to
+        the iOS app, Apple&apos;s EULA shall prevail to the extent of that conflict.
+      </p>
+      <h3>4.1 Subscriptions</h3>
+      <p>
+        The BofBot iOS app offers an auto-renewing monthly subscription (&quot;Pro&quot;) for
+        $24.99/month USD or local equivalent. Payment is charged to your Apple ID account at
+        confirmation of purchase. Your subscription automatically renews unless auto-renew is
+        turned off at least 24 hours before the end of the current period. Your account will be
+        charged for renewal within 24 hours prior to the end of the current period.
+      </p>
+      <p>
+        You may manage or cancel your subscription at any time on your iOS device under{" "}
+        <strong>Settings → [your Apple ID] → Subscriptions</strong>.
+      </p>
+      <h3>4.2 Refunds</h3>
+      <p>
+        All payments for the iOS app are handled by Apple and are subject to Apple&apos;s refund
+        policy. Requests for refunds must be submitted to Apple directly at{" "}
+        <a
+          href="https://reportaproblem.apple.com/"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          reportaproblem.apple.com
+        </a>
+        . We are not able to process refunds for App Store purchases on Apple&apos;s behalf.
+      </p>
+      <h3>4.3 Acceptable use</h3>
+      <p>
+        You agree to use the BofBot iOS app only for editing your own original video content or
+        content you have the right to use. You are responsible for ensuring your use complies
+        with all platform terms (TikTok, etc.) and applicable laws.
+      </p>
+      <h3>4.4 Termination</h3>
+      <p>
+        We reserve the right to discontinue the iOS app or any subscription tier at any time,
+        with reasonable notice provided through the app or by email. In the event of
+        discontinuation of paid features, refunds for unused subscription time will be processed
+        through Apple per Apple&apos;s policies.
+      </p>
+
+      <h2>5. Third-party platforms (including TikTok)</h2>
       <p>
         <strong>
           We are not affiliated with, endorsed by, or responsible for TikTok, TikTok Shop, or any
@@ -60,7 +113,7 @@ export default function TermsPage() {
         with respect to platform policies and enforcement.
       </p>
 
-      <h2>5. Fees, billing, and refunds</h2>
+      <h2>6. Fees, billing, and refunds</h2>
       <p>
         Paid plans are billed according to the prices shown at checkout.{" "}
         <strong>
@@ -78,7 +131,7 @@ export default function TermsPage() {
         Chargebacks or payment disputes may result in suspension of your account.
       </p>
 
-      <h2>6. Acceptable use and termination</h2>
+      <h2>7. Acceptable use and termination</h2>
       <p>You agree not to:</p>
       <ul>
         <li>Use the Service for illegal purposes or to violate others&apos; rights;</li>
@@ -96,7 +149,7 @@ export default function TermsPage() {
         where appropriate.
       </p>
 
-      <h2>7. Intellectual property</h2>
+      <h2>8. Intellectual property</h2>
       <p>
         BofBot, our branding, and the Service&apos;s software and materials are owned by us or our
         licensors. We grant you a limited, non-exclusive, non-transferable license to use the
@@ -104,7 +157,7 @@ export default function TermsPage() {
         You retain ownership of your original video content and outputs you create.
       </p>
 
-      <h2>8. Disclaimer of warranties</h2>
+      <h2>9. Disclaimer of warranties</h2>
       <p>
         <strong>
           THE SERVICE IS PROVIDED &quot;AS IS&quot; AND &quot;AS AVAILABLE,&quot; WITHOUT WARRANTIES OF ANY
@@ -114,7 +167,7 @@ export default function TermsPage() {
         </strong>
       </p>
 
-      <h2>9. Limitation of liability</h2>
+      <h2>10. Limitation of liability</h2>
       <p>
         TO THE MAXIMUM EXTENT PERMITTED BY LAW, IN NO EVENT WILL BOFBOT OR ITS SUPPLIERS BE LIABLE
         FOR ANY INDIRECT, INCIDENTAL, SPECIAL, CONSEQUENTIAL, OR PUNITIVE DAMAGES, OR ANY LOSS OF
@@ -125,7 +178,7 @@ export default function TermsPage() {
         DOLLARS (US$100), EXCEPT WHERE PROHIBITED BY LAW.
       </p>
 
-      <h2>10. Indemnity</h2>
+      <h2>11. Indemnity</h2>
       <p>
         You will defend, indemnify, and hold harmless BofBot and its affiliates, officers,
         directors, employees, and agents from any claims, damages, losses, and expenses (including
@@ -133,14 +186,14 @@ export default function TermsPage() {
         violation of these Terms or applicable law.
       </p>
 
-      <h2>11. Changes</h2>
+      <h2>12. Changes</h2>
       <p>
         We may modify these Terms from time to time. We will post the updated Terms on this page
         and update the &quot;Last updated&quot; date. Material changes may be communicated by email or
         in-app notice. Continued use after changes become effective constitutes acceptance.
       </p>
 
-      <h2>12. General</h2>
+      <h2>13. General</h2>
       <p>
         These Terms constitute the entire agreement between you and BofBot regarding the Service.
         If any provision is unenforceable, the remaining provisions remain in effect. Failure to
@@ -148,7 +201,7 @@ export default function TermsPage() {
         may assign them in connection with a merger, acquisition, or sale of assets.
       </p>
 
-      <h2>13. Contact</h2>
+      <h2>14. Contact</h2>
       <p>
         For questions about these Terms, contact us through the channels listed on our website or
         your account dashboard.
