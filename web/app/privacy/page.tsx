@@ -71,9 +71,11 @@ export default function PrivacyPage() {
           or database to store your account or content.
         </li>
         <li>
-          <strong>Sign in with Apple.</strong> We receive a stable anonymous user identifier from
-          Apple to maintain your local session. We do not receive your real name or email unless
-          you choose to share them.
+          <strong>Sign in with Apple (optional).</strong> If you choose to sign in with Apple in
+          Settings, we receive a stable anonymous user identifier from Apple, used only to greet
+          you by name within the app. Sign in with Apple is not required to use any feature of
+          the app, including subscriptions. We do not receive your real name or email unless you
+          choose to share them.
         </li>
         <li>
           <strong>Subscriptions.</strong> Managed entirely by Apple via the App Store. We never
